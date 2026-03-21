@@ -1,17 +1,250 @@
 ---
+import Base from "../layouts/Base.astro";
 
+// Load presets for the examples section
+const presetFiles = import.meta.glob("../data/presets/*.json", { eager: true });
+const presets = Object.entries(presetFiles).map(([path, mod]) => {
+  const slug = path.split("/").pop()!.replace(".json", "");
+  const data = (mod as any).default;
+  return { slug, title: data.title };
+});
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Base title="Days Since — Builder">
+  <div class="builder">
+    <h1>Days Since — Builder</h1>
+    <p class="subtitle">Create a shareable "days since" counter. Fill in the form and grab your link.</p>
+
+    {presets.length > 0 && (
+      <div class="presets">
+        <strong>Examples:</strong>
+        {presets.map((p) => (
+          <a href={`/p/${p.slug}`}>{p.title}</a>
+        ))}
+      </div>
+    )}
+
+    <form id="builder-form">
+      <label>
+        Title (what are we counting?)
+        <input type="text" id="f-title" placeholder="new Rust MC server releases" required />
+      </label>
+
+      <div class="color-row">
+        <label>
+          Background
+          <input type="color" id="f-bg" value="#f0f8ff" />
+        </label>
+        <label>
+          Accent
+          <input type="color" id="f-accent" value="#4444ff" />
+        </label>
+      </div>
+
+      <fieldset id="entries-fieldset">
+        <legend>Entries (at least one)</legend>
+        <div id="entries-list"></div>
+        <button type="button" id="add-entry" class="btn-secondary">+ Add entry</button>
+      </fieldset>
+
+      <button type="submit" class="btn-primary">Generate link</button>
+    </form>
+
+    <div id="result" class="result" hidden>
+      <h2>Your link</h2>
+      <input type="text" id="result-url" readonly />
+      <div class="result-actions">
+        <button id="copy-btn" class="btn-secondary">Copy</button>
+        <a id="open-btn" class="btn-primary" target="_blank" rel="noopener">Open</a>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { encode } from "../lib/codec";
+  import type { DaySinceConfig, DaySinceEntry } from "../lib/types";
+
+  const list = document.getElementById("entries-list")!;
+  const form = document.getElementById("builder-form") as HTMLFormElement;
+
+  function createEntryRow(name = "", url = "", date = "") {
+    const row = document.createElement("div");
+    row.className = "entry-row";
+    row.innerHTML = `
+      <input type="text" placeholder="Name" class="e-name" value="${name}" required />
+      <input type="url" placeholder="https://..." class="e-url" value="${url}" />
+      <input type="date" class="e-date" value="${date}" required />
+      <button type="button" class="btn-remove" title="Remove">✕</button>
+    `;
+    row.querySelector(".btn-remove")!.addEventListener("click", () => {
+      row.remove();
+    });
+    list.appendChild(row);
+  }
+
+  document.getElementById("add-entry")!.addEventListener("click", () => createEntryRow());
+  // Start with one empty entry
+  createEntryRow();
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const entries: DaySinceEntry[] = [...list.querySelectorAll(".entry-row")].map((row) => ({
+      name: (row.querySelector(".e-name") as HTMLInputElement).value,
+      url: (row.querySelector(".e-url") as HTMLInputElement).value || undefined,
+      date: (row.querySelector(".e-date") as HTMLInputElement).value,
+    })) as DaySinceEntry[];
+
+    if (entries.length === 0) return alert("Add at least one entry.");
+
+    const config: DaySinceConfig = {
+      title: (document.getElementById("f-title") as HTMLInputElement).value,
+      bg: (document.getElementById("f-bg") as HTMLInputElement).value,
+      accent: (document.getElementById("f-accent") as HTMLInputElement).value,
+      entries,
+    };
+
+    const hash = encode(config);
+    const url = `${window.location.origin}/d#${hash}`;
+
+    const resultDiv = document.getElementById("result")!;
+    const resultUrl = document.getElementById("result-url") as HTMLInputElement;
+    const openBtn = document.getElementById("open-btn") as HTMLAnchorElement;
+
+    resultUrl.value = url;
+    openBtn.href = url;
+    resultDiv.hidden = false;
+    resultUrl.select();
+  });
+
+  document.getElementById("copy-btn")!.addEventListener("click", () => {
+    const input = document.getElementById("result-url") as HTMLInputElement;
+    navigator.clipboard.writeText(input.value);
+    document.getElementById("copy-btn")!.textContent = "Copied!";
+    setTimeout(() => (document.getElementById("copy-btn")!.textContent = "Copy"), 2000);
+  });
+</script>
+
+<style>
+  .builder {
+    max-width: 640px;
+    width: 100%;
+    padding: 2rem;
+    margin: 0 auto;
+  }
+  h1 { margin-bottom: 0.25rem; }
+  .subtitle { opacity: 0.6; margin-bottom: 2rem; }
+  .presets {
+    margin-bottom: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .presets a {
+    background: #eef;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  input[type="text"],
+  input[type="url"],
+  input[type="date"] {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  .color-row {
+    display: flex;
+    gap: 1rem;
+  }
+  .color-row label { flex: 1; }
+  input[type="color"] {
+    width: 100%;
+    height: 36px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  fieldset {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  legend { font-weight: 700; }
+  :global(.entry-row) {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+  }
+  :global(.entry-row input) {
+    padding: 0.4rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  :global(.btn-remove) {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.5;
+    padding: 0.25rem;
+  }
+  :global(.btn-remove:hover) { opacity: 1; }
+  .btn-primary, .btn-secondary {
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    text-align: center;
+  }
+  .btn-primary {
+    background: #4444ff;
+    color: white;
+    font-weight: 700;
+  }
+  .btn-secondary {
+    background: #eee;
+  }
+  .result {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 2px solid #4444ff;
+    border-radius: 8px;
+    background: #f8f8ff;
+  }
+  .result h2 { margin-bottom: 0.75rem; }
+  .result input[type="text"] {
+    width: 100%;
+    padding: 0.5rem;
+    font-family: monospace;
+    font-size: 0.85rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+  }
+  .result-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+</style>

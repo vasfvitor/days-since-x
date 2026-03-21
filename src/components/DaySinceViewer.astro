@@ -1,0 +1,164 @@
+---
+/**
+ * Server-rendered "days since" counter + timeline.
+ * Receives the full config as a prop, works for both preset and dynamic pages.
+ * A small client script updates the counter live so the number stays fresh.
+ */
+import type { DaySinceConfig } from "../lib/types";
+import { daysSince, formatDate } from "../lib/codec";
+
+interface Props {
+  config: DaySinceConfig;
+}
+
+const { config } = Astro.props;
+const bg = config.bg ?? "#f0f8ff";
+const accent = config.accent ?? "#4444ff";
+
+// Sort entries newest-first for display, keep a copy oldest-first for timeline
+const sorted = [...config.entries].sort(
+  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+);
+const latest = sorted[0];
+const days = latest ? daysSince(latest.date) : 0;
+const timeline = [...sorted].reverse();
+---
+
+<div class="ds-root" style={`--bg: ${bg}; --accent: ${accent};`}>
+  <main class="ds-main">
+    <h1>
+      It has been
+      <span class="ds-count" data-date={latest?.date}>{days}</span>
+      {days === 1 ? "day" : "days"} since the last {config.title}.
+    </h1>
+
+    {latest && (
+      <p class="ds-latest">
+        Most recent:
+        {latest.url
+          ? <a href={latest.url} target="_blank" rel="noopener">{latest.name}</a>
+          : <strong>{latest.name}</strong>
+        }
+        &mdash; {formatDate(latest.date)}
+      </p>
+    )}
+  </main>
+
+  {timeline.length > 0 && (
+    <section class="ds-timeline">
+      <h2>Timeline</h2>
+      <ul>
+        {timeline.map((e) => (
+          <li>
+            <span class="dot" />
+            <div>
+              {e.url
+                ? <a href={e.url} target="_blank" rel="noopener">{e.name}</a>
+                : <strong>{e.name}</strong>
+              }
+              <time>{formatDate(e.date)}</time>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <footer>
+    <a href="/">Create your own</a>
+  </footer>
+</div>
+
+<script>
+  // Live-update counter on the client
+  function update() {
+    const el = document.querySelector<HTMLSpanElement>(".ds-count");
+    if (!el?.dataset.date) return;
+    const then = new Date(el.dataset.date + "T00:00:00").getTime();
+    const days = Math.floor((Date.now() - then) / 86_400_000);
+    el.textContent = String(days);
+  }
+  update();
+  setInterval(update, 60_000);
+</script>
+
+<style>
+  .ds-root {
+    background: var(--bg);
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .ds-main {
+    max-width: 800px;
+    text-align: center;
+    margin-top: 4rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+  }
+  .ds-count {
+    color: var(--accent);
+    font-weight: 900;
+  }
+  .ds-latest {
+    font-size: 1.25rem;
+    opacity: 0.8;
+  }
+  .ds-latest a {
+    font-weight: 700;
+    text-decoration: underline;
+  }
+  .ds-timeline {
+    margin-top: 4rem;
+    max-width: 600px;
+    width: 100%;
+  }
+  .ds-timeline h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+  }
+  .ds-timeline ul {
+    list-style: none;
+    border-left: 3px solid var(--accent);
+    margin-left: 1rem;
+    padding-left: 1.5rem;
+  }
+  .ds-timeline li {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  .dot {
+    position: absolute;
+    left: -1.85rem;
+    top: 0.35rem;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+  }
+  .ds-timeline a,
+  .ds-timeline strong {
+    font-size: 1.1rem;
+  }
+  .ds-timeline time {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.6;
+  }
+  footer {
+    margin-top: auto;
+    padding: 2rem;
+    opacity: 0.5;
+    font-size: 0.9rem;
+  }
+</style>

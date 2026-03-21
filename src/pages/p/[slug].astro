@@ -1,0 +1,26 @@
+---
+/**
+ * Static preset pages. Each JSON file in src/data/presets/ becomes a route.
+ * e.g. rust-mc-servers.json → /p/rust-mc-servers
+ */
+import Base from "../../layouts/Base.astro";
+import DaySinceViewer from "../../components/DaySinceViewer.astro";
+import type { DaySinceConfig } from "../../lib/types";
+
+export async function getStaticPaths() {
+  const presetFiles = import.meta.glob("../../data/presets/*.json", { eager: true });
+  return Object.entries(presetFiles).map(([path, mod]) => {
+    const slug = path.split("/").pop()!.replace(".json", "");
+    return {
+      params: { slug },
+      props: { config: (mod as any).default as DaySinceConfig },
+    };
+  });
+}
+
+const { config } = Astro.props;
+---
+
+<Base title={`Days since the last ${config.title}`}>
+  <DaySinceViewer config={config} />
+</Base>

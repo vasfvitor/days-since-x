@@ -1,0 +1,190 @@
+---
+/**
+ * Dynamic viewer — reads config from URL hash.
+ * Since the hash (#) is never sent to the server, this page renders a
+ * loading shell and hydrates entirely on the client.
+ */
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Days Since">
+  <div id="loading" class="loading">Loading…</div>
+  <div id="mount"></div>
+</Base>
+
+<script>
+  import { decode, daysSince, formatDate } from "../lib/codec";
+  import type { DaySinceConfig } from "../lib/types";
+
+  function render(config: DaySinceConfig) {
+    const bg = config.bg ?? "#f0f8ff";
+    const accent = config.accent ?? "#4444ff";
+
+    const sorted = [...config.entries].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    const latest = sorted[0];
+    const days = latest ? daysSince(latest.date) : 0;
+    const timeline = [...sorted].reverse();
+
+    const mount = document.getElementById("mount")!;
+    mount.innerHTML = `
+      <div class="ds-root" style="--bg: ${bg}; --accent: ${accent};">
+        <main class="ds-main">
+          <h1>
+            It has been
+            <span class="ds-count" data-date="${latest?.date ?? ""}">${days}</span>
+            ${days === 1 ? "day" : "days"} since the last ${config.title}.
+          </h1>
+          ${latest ? `<p class="ds-latest">
+            Most recent:
+            ${latest.url
+              ? `<a href="${latest.url}" target="_blank" rel="noopener">${latest.name}</a>`
+              : `<strong>${latest.name}</strong>`}
+            &mdash; ${formatDate(latest.date)}
+          </p>` : ""}
+        </main>
+        ${timeline.length > 0 ? `
+        <section class="ds-timeline">
+          <h2>Timeline</h2>
+          <ul>
+            ${timeline.map(e => `
+              <li>
+                <span class="dot"></span>
+                <div>
+                  ${e.url
+                    ? `<a href="${e.url}" target="_blank" rel="noopener">${e.name}</a>`
+                    : `<strong>${e.name}</strong>`}
+                  <time>${formatDate(e.date)}</time>
+                </div>
+              </li>
+            `).join("")}
+          </ul>
+        </section>` : ""}
+        <footer><a href="/">Create your own</a></footer>
+      </div>
+    `;
+
+    document.title = `${days} days since the last ${config.title}`;
+  }
+
+  function init() {
+    const hash = window.location.hash.slice(1);
+    const loading = document.getElementById("loading")!;
+
+    if (!hash) {
+      loading.textContent = "No data in URL. Go to the builder to create a link.";
+      loading.innerHTML += '<br><a href="/">Go to builder</a>';
+      return;
+    }
+
+    const config = decode(hash);
+    if (!config) {
+      loading.textContent = "Could not decode URL data.";
+      loading.innerHTML += '<br><a href="/">Go to builder</a>';
+      return;
+    }
+
+    loading.hidden = true;
+    render(config);
+  }
+
+  init();
+  window.addEventListener("hashchange", init);
+</script>
+
+<style>
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-size: 1.25rem;
+    opacity: 0.5;
+    text-align: center;
+  }
+  .loading a {
+    display: inline-block;
+    margin-top: 0.5rem;
+  }
+
+  /* Mirror the DaySinceViewer styles for client-rendered content */
+  :global(.ds-root) {
+    background: var(--bg);
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  :global(.ds-main) {
+    max-width: 800px;
+    text-align: center;
+    margin-top: 4rem;
+  }
+  :global(.ds-main h1) {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+  }
+  :global(.ds-count) {
+    color: var(--accent);
+    font-weight: 900;
+  }
+  :global(.ds-latest) {
+    font-size: 1.25rem;
+    opacity: 0.8;
+  }
+  :global(.ds-latest a) {
+    font-weight: 700;
+    text-decoration: underline;
+  }
+  :global(.ds-timeline) {
+    margin-top: 4rem;
+    max-width: 600px;
+    width: 100%;
+  }
+  :global(.ds-timeline h2) {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+  }
+  :global(.ds-timeline ul) {
+    list-style: none;
+    border-left: 3px solid var(--accent);
+    margin-left: 1rem;
+    padding-left: 1.5rem;
+  }
+  :global(.ds-timeline li) {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  :global(.dot) {
+    position: absolute;
+    left: -1.85rem;
+    top: 0.35rem;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+  }
+  :global(.ds-timeline a),
+  :global(.ds-timeline strong) {
+    font-size: 1.1rem;
+  }
+  :global(.ds-timeline time) {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.6;
+  }
+  :global(.ds-root footer) {
+    margin-top: auto;
+    padding: 2rem;
+    opacity: 0.5;
+    font-size: 0.9rem;
+  }
+</style>
