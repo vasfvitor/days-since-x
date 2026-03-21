@@ -1,7 +1,7 @@
 export interface DaySinceEntry {
   name: string;
   url?: string;
-  date: string; // ISO date string YYYY-MM-DD
+  date?: string; // ISO date string YYYY-MM-DD (optional)
 }
 
 export interface DaySinceConfig {

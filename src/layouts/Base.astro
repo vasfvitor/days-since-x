@@ -5,24 +5,90 @@ interface Props {
 const { title = "Days Since" } = Astro.props;
 ---
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet" />
     <title>{title}</title>
     <style is:global>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
-        font-family: Arial, Helvetica, sans-serif;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
         align-items: center;
+        color: #1a1a2e;
+        -webkit-font-smoothing: antialiased;
       }
       a { color: inherit; }
+
+      /* Language toggle — inline segmented control */
+      .lang-switch {
+        display: inline-flex;
+        border: 1.5px solid rgba(0,0,0,0.12);
+        border-radius: 8px;
+        overflow: hidden;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+      .lang-switch button {
+        padding: 0.3rem 0.65rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: rgba(0,0,0,0.4);
+        transition: all 0.15s ease;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+      }
+      .lang-switch button:hover { color: rgba(0,0,0,0.6); }
+      .lang-switch button.active {
+        background: rgba(0,0,0,0.07);
+        color: rgba(0,0,0,0.8);
+      }
     </style>
   </head>
   <body>
     <slot />
+    <script>
+      import { getLang, setLang, applyI18n, type Lang } from "../lib/i18n";
+
+      function initLangToggle() {
+        const switches = document.querySelectorAll<HTMLElement>(".lang-switch");
+        let lang = getLang();
+
+        function update() {
+          document.documentElement.lang = lang === "pt-BR" ? "pt-BR" : "en";
+          switches.forEach((sw) => {
+            sw.querySelectorAll("button").forEach((btn) => {
+              btn.classList.toggle("active", btn.dataset.lang === lang);
+            });
+          });
+          applyI18n(lang);
+          window.dispatchEvent(new CustomEvent("langchange", { detail: lang }));
+        }
+
+        update();
+
+        switches.forEach((sw) => {
+          sw.addEventListener("click", (e) => {
+            const btn = (e.target as HTMLElement).closest("button");
+            if (!btn?.dataset.lang) return;
+            lang = btn.dataset.lang as Lang;
+            setLang(lang);
+            update();
+          });
+        });
+      }
+
+      initLangToggle();
+    </script>
   </body>
 </html>

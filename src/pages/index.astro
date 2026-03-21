@@ -1,7 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
 
-// Load presets for the examples section
 const presetFiles = import.meta.glob("../data/presets/*.json", { eager: true });
 const presets = Object.entries(presetFiles).map(([path, mod]) => {
   const slug = path.split("/").pop()!.replace(".json", "");
@@ -10,14 +9,16 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
 });
 ---
 
-<Base title="Days Since — Builder">
+<Base title="Days Since">
   <div class="builder">
-    <h1>Days Since — Builder</h1>
-    <p class="subtitle">Create a shareable "days since" counter. Fill in the form and grab your link.</p>
+    <header class="builder-header">
+      <h1>Days Since</h1>
+      <p class="subtitle" data-i18n="builderSubtitle">Crie um contador "dias desde" compartilhável. Preencha o formulário e pegue seu link.</p>
+    </header>
 
     {presets.length > 0 && (
       <div class="presets">
-        <strong>Examples:</strong>
+        <span class="presets-label" data-i18n="examples">Exemplos</span>
         {presets.map((p) => (
           <a href={`/p/${p.slug}`}>{p.title}</a>
         ))}
@@ -26,82 +27,172 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
 
     <form id="builder-form">
       <label>
-        Title (what are we counting?)
-        <input type="text" id="f-title" placeholder="new Rust MC server releases" required />
+        <span data-i18n="titleLabel">Título (o que estamos contando?)</span>
+        <input type="text" id="f-title" data-i18n-placeholder="titlePlaceholder" placeholder="novo servidor de Minecraft feito em Rust" required />
       </label>
 
       <div class="color-row">
         <label>
-          Background
-          <input type="color" id="f-bg" value="#f0f8ff" />
+          <span data-i18n="background">Fundo</span>
+          <div class="color-input">
+            <input type="color" id="f-bg" value="#f0f8ff" />
+            <span class="color-hex" id="f-bg-hex">#f0f8ff</span>
+          </div>
         </label>
         <label>
-          Accent
-          <input type="color" id="f-accent" value="#4444ff" />
+          <span data-i18n="accent">Destaque</span>
+          <div class="color-input">
+            <input type="color" id="f-accent" value="#4444ff" />
+            <span class="color-hex" id="f-accent-hex">#4444ff</span>
+          </div>
         </label>
       </div>
 
       <fieldset id="entries-fieldset">
-        <legend>Entries (at least one)</legend>
+        <legend data-i18n="entriesLegend">Entradas (pelo menos uma)</legend>
         <div id="entries-list"></div>
-        <button type="button" id="add-entry" class="btn-secondary">+ Add entry</button>
+        <div class="entries-actions">
+          <button type="button" id="add-entry" class="btn-ghost" data-i18n="addEntry">+ Adicionar entrada</button>
+          <button type="button" id="bulk-toggle" class="btn-ghost" data-i18n="importBtn">Importar em lote</button>
+        </div>
+        <div id="bulk-import" class="bulk-import" hidden>
+          <p class="bulk-help" data-i18n="importHelp">Uma entrada por linha: nome, url, data</p>
+          <textarea id="bulk-text" rows="5" placeholder="Feather, feather-rs/feather, 2019-09-01&#10;MCHPRS, MCHPR/MCHPRS, 2020-05-01&#10;Valence,, 2022-10-01"></textarea>
+          <button type="button" id="bulk-parse" class="btn-ghost" data-i18n="importParse">Importar</button>
+        </div>
       </fieldset>
 
-      <button type="submit" class="btn-primary">Generate link</button>
+      <button type="submit" class="btn-primary" data-i18n="generateLink">Gerar link</button>
     </form>
 
     <div id="result" class="result" hidden>
-      <h2>Your link</h2>
-      <input type="text" id="result-url" readonly />
-      <div class="result-actions">
-        <button id="copy-btn" class="btn-secondary">Copy</button>
-        <a id="open-btn" class="btn-primary" target="_blank" rel="noopener">Open</a>
+      <p class="result-label" data-i18n="yourLink">Seu link</p>
+      <div class="result-box">
+        <input type="text" id="result-url" readonly />
+        <button id="copy-btn" class="btn-copy" data-i18n="copy">Copiar</button>
       </div>
+      <a id="open-btn" class="btn-primary btn-open" target="_blank" rel="noopener" data-i18n="open">Abrir</a>
     </div>
+
+    <footer class="builder-footer">
+      <div class="lang-switch">
+        <button data-lang="pt-BR">PT</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </footer>
   </div>
 </Base>
 
 <script>
-  import { encode } from "../lib/codec";
+  import { encode, decode, resolveUrl } from "../lib/codec";
+  import { getLang, t } from "../lib/i18n";
   import type { DaySinceConfig, DaySinceEntry } from "../lib/types";
 
   const list = document.getElementById("entries-list")!;
   const form = document.getElementById("builder-form") as HTMLFormElement;
 
+  // Color hex display
+  const bgInput = document.getElementById("f-bg") as HTMLInputElement;
+  const accentInput = document.getElementById("f-accent") as HTMLInputElement;
+  const bgHex = document.getElementById("f-bg-hex")!;
+  const accentHex = document.getElementById("f-accent-hex")!;
+  bgInput.addEventListener("input", () => (bgHex.textContent = bgInput.value));
+  accentInput.addEventListener("input", () => (accentHex.textContent = accentInput.value));
+
   function createEntryRow(name = "", url = "", date = "") {
+    const lang = getLang();
     const row = document.createElement("div");
     row.className = "entry-row";
     row.innerHTML = `
-      <input type="text" placeholder="Name" class="e-name" value="${name}" required />
-      <input type="url" placeholder="https://..." class="e-url" value="${url}" />
-      <input type="date" class="e-date" value="${date}" required />
-      <button type="button" class="btn-remove" title="Remove">✕</button>
+      <input type="text" class="e-name" data-i18n-placeholder="namePlaceholder" placeholder="${t(lang, "namePlaceholder")}" value="${name}" required />
+      <input type="text" class="e-url" data-i18n-placeholder="urlPlaceholder" placeholder="${t(lang, "urlPlaceholder")}" value="${url}" />
+      <input type="date" class="e-date" value="${date}" />
+      <button type="button" class="btn-remove" title="Remove">&times;</button>
     `;
     row.querySelector(".btn-remove")!.addEventListener("click", () => {
-      row.remove();
+      if (list.querySelectorAll(".entry-row").length > 1) {
+        row.remove();
+      }
     });
     list.appendChild(row);
   }
 
   document.getElementById("add-entry")!.addEventListener("click", () => createEntryRow());
-  // Start with one empty entry
-  createEntryRow();
+
+  // Pre-fill form if ?edit=HASH is present
+  const editHash = new URLSearchParams(window.location.search).get("edit");
+  const editConfig = editHash ? decode(editHash) : null;
+  if (editConfig) {
+    (document.getElementById("f-title") as HTMLInputElement).value = editConfig.title;
+    if (editConfig.bg) {
+      bgInput.value = editConfig.bg;
+      bgHex.textContent = editConfig.bg;
+    }
+    if (editConfig.accent) {
+      accentInput.value = editConfig.accent;
+      accentHex.textContent = editConfig.accent;
+    }
+    for (const entry of editConfig.entries) {
+      createEntryRow(entry.name, entry.url ?? "", entry.date ?? "");
+    }
+  } else {
+    createEntryRow();
+  }
+
+  // Bulk import
+  const bulkPanel = document.getElementById("bulk-import")!;
+  const bulkText = document.getElementById("bulk-text") as HTMLTextAreaElement;
+
+  document.getElementById("bulk-toggle")!.addEventListener("click", () => {
+    bulkPanel.hidden = !bulkPanel.hidden;
+    if (!bulkPanel.hidden) bulkText.focus();
+  });
+
+  document.getElementById("bulk-parse")!.addEventListener("click", () => {
+    const raw = bulkText.value.trim();
+    if (!raw) return;
+
+    const lines = raw.split("\n").filter((l) => l.trim());
+    // Remove the default empty row if it's the only one and still blank
+    const existingRows = list.querySelectorAll(".entry-row");
+    if (
+      existingRows.length === 1 &&
+      !(existingRows[0].querySelector(".e-name") as HTMLInputElement).value
+    ) {
+      existingRows[0].remove();
+    }
+
+    for (const line of lines) {
+      const parts = line.split(",").map((s) => s.trim());
+      const name = parts[0] || "";
+      const url = parts[1] || "";
+      const date = parts[2] || "";
+      if (name) createEntryRow(name, url, date);
+    }
+
+    bulkText.value = "";
+    bulkPanel.hidden = true;
+  });
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const entries: DaySinceEntry[] = [...list.querySelectorAll(".entry-row")].map((row) => ({
-      name: (row.querySelector(".e-name") as HTMLInputElement).value,
-      url: (row.querySelector(".e-url") as HTMLInputElement).value || undefined,
-      date: (row.querySelector(".e-date") as HTMLInputElement).value,
-    })) as DaySinceEntry[];
+    const entries: DaySinceEntry[] = [...list.querySelectorAll(".entry-row")].map((row) => {
+      const rawUrl = (row.querySelector(".e-url") as HTMLInputElement).value;
+      const date = (row.querySelector(".e-date") as HTMLInputElement).value;
+      return {
+        name: (row.querySelector(".e-name") as HTMLInputElement).value,
+        url: resolveUrl(rawUrl),
+        date: date || undefined,
+      };
+    });
 
-    if (entries.length === 0) return alert("Add at least one entry.");
+    if (entries.length === 0) return;
 
     const config: DaySinceConfig = {
       title: (document.getElementById("f-title") as HTMLInputElement).value,
-      bg: (document.getElementById("f-bg") as HTMLInputElement).value,
-      accent: (document.getElementById("f-accent") as HTMLInputElement).value,
+      bg: bgInput.value,
+      accent: accentInput.value,
       entries,
     };
 
@@ -119,10 +210,12 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   });
 
   document.getElementById("copy-btn")!.addEventListener("click", () => {
+    const lang = getLang();
     const input = document.getElementById("result-url") as HTMLInputElement;
     navigator.clipboard.writeText(input.value);
-    document.getElementById("copy-btn")!.textContent = "Copied!";
-    setTimeout(() => (document.getElementById("copy-btn")!.textContent = "Copy"), 2000);
+    const btn = document.getElementById("copy-btn")!;
+    btn.textContent = t(lang, "copied");
+    setTimeout(() => (btn.textContent = t(lang, "copy")), 2000);
   });
 </script>
 
@@ -130,121 +223,266 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   .builder {
     max-width: 640px;
     width: 100%;
-    padding: 2rem;
+    padding: 3rem 1.5rem 2rem;
     margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
-  h1 { margin-bottom: 0.25rem; }
-  .subtitle { opacity: 0.6; margin-bottom: 2rem; }
+  .builder-header {
+    margin-bottom: 2.5rem;
+  }
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+    opacity: 0.5;
+    line-height: 1.5;
+  }
   .presets {
     margin-bottom: 2rem;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
   }
+  .presets-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.4;
+    margin-right: 0.25rem;
+  }
   .presets a {
-    background: #eef;
-    padding: 0.3rem 0.7rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
+    background: rgba(68,68,255,0.06);
+    color: #4444ff;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
     text-decoration: none;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .presets a:hover {
+    background: rgba(68,68,255,0.12);
   }
   form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
   }
   label {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.35rem;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.01em;
   }
   input[type="text"],
   input[type="url"],
   input[type="date"] {
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 1rem;
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    background: #fff;
+  }
+  input[type="text"]:focus,
+  input[type="url"]:focus,
+  input[type="date"]:focus {
+    outline: none;
+    border-color: #4444ff;
   }
   .color-row {
     display: flex;
     gap: 1rem;
   }
   .color-row label { flex: 1; }
+  .color-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
   input[type="color"] {
-    width: 100%;
-    height: 36px;
-    border: 1px solid #ccc;
+    width: 40px;
+    height: 32px;
+    border: 1.5px solid #e0e0e0;
     border-radius: 6px;
     cursor: pointer;
+    padding: 2px;
+  }
+  .color-hex {
+    font-family: 'Inter', monospace;
+    font-size: 0.8rem;
+    opacity: 0.5;
   }
   fieldset {
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 10px;
     padding: 1rem;
   }
-  legend { font-weight: 700; }
+  legend {
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 0 0.25rem;
+  }
   :global(.entry-row) {
     display: grid;
     grid-template-columns: 1fr 1fr auto auto;
-    gap: 0.5rem;
+    gap: 0.4rem;
     margin-bottom: 0.5rem;
     align-items: center;
   }
+  @media (max-width: 500px) {
+    :global(.entry-row) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
   :global(.entry-row input) {
-    padding: 0.4rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.9rem;
+    padding: 0.45rem 0.6rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #fff;
+  }
+  :global(.entry-row input:focus) {
+    outline: none;
+    border-color: #4444ff;
   }
   :global(.btn-remove) {
     background: none;
     border: none;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     cursor: pointer;
-    opacity: 0.5;
+    opacity: 0.3;
     padding: 0.25rem;
+    transition: opacity 0.15s;
+    line-height: 1;
   }
-  :global(.btn-remove:hover) { opacity: 1; }
-  .btn-primary, .btn-secondary {
-    padding: 0.6rem 1.2rem;
-    border-radius: 6px;
-    font-size: 1rem;
+  :global(.btn-remove:hover) { opacity: 0.8; }
+  .btn-primary, .btn-ghost {
+    padding: 0.65rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
     border: none;
     text-decoration: none;
     text-align: center;
+    font-family: inherit;
+    transition: all 0.15s;
   }
   .btn-primary {
-    background: #4444ff;
+    background: #1a1a2e;
     color: white;
-    font-weight: 700;
   }
-  .btn-secondary {
-    background: #eee;
+  .btn-primary:hover {
+    background: #2d2d4e;
   }
+  .btn-ghost {
+    background: transparent;
+    color: #4444ff;
+    font-size: 0.85rem;
+    padding: 0.4rem;
+  }
+  .btn-ghost:hover {
+    background: rgba(68,68,255,0.06);
+    border-radius: 6px;
+  }
+  .entries-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .bulk-import {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .bulk-help {
+    font-size: 0.75rem;
+    opacity: 0.5;
+    line-height: 1.4;
+  }
+  .bulk-import textarea {
+    padding: 0.5rem 0.65rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+  .bulk-import textarea:focus {
+    outline: none;
+    border-color: #4444ff;
+  }
+
+  /* Result */
   .result {
     margin-top: 2rem;
     padding: 1.5rem;
-    border: 2px solid #4444ff;
-    border-radius: 8px;
-    background: #f8f8ff;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    background: #fafafa;
   }
-  .result h2 { margin-bottom: 0.75rem; }
-  .result input[type="text"] {
-    width: 100%;
-    padding: 0.5rem;
-    font-family: monospace;
-    font-size: 0.85rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+  .result-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.4;
     margin-bottom: 0.75rem;
   }
-  .result-actions {
+  .result-box {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .result-box input[type="text"] {
+    flex: 1;
+    padding: 0.5rem 0.7rem;
+    font-family: 'Inter', monospace;
+    font-size: 0.8rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+  }
+  .btn-copy {
+    padding: 0.5rem 0.9rem;
+    border-radius: 6px;
+    border: 1.5px solid #e0e0e0;
+    background: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-copy:hover { border-color: #999; }
+  .btn-open {
+    display: block;
+    width: 100%;
+  }
+
+  /* Footer */
+  .builder-footer {
+    margin-top: auto;
+    padding-top: 3rem;
+    display: flex;
+    justify-content: center;
   }
 </style>

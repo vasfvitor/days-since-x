@@ -1,115 +1,141 @@
 ---
-/**
- * Dynamic viewer — reads config from URL hash.
- * Since the hash (#) is never sent to the server, this page renders a
- * loading shell and hydrates entirely on the client.
- */
 import Base from "../layouts/Base.astro";
 ---
 
 <Base title="Days Since">
-  <div id="loading" class="loading">Loading…</div>
+  <div id="loading" class="loading" data-i18n="loading">Carregando…</div>
   <div id="mount"></div>
+
+  <script>
+    import { decode, daysSince } from "../lib/codec";
+    import { getLang, formatDateLocale, t, type Lang } from "../lib/i18n";
+    import type { DaySinceConfig } from "../lib/types";
+
+    function escHtml(s: string) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function render(config: DaySinceConfig, lang: Lang, hash: string) {
+      const bg = config.bg ?? "#f0f8ff";
+      const accent = config.accent ?? "#4444ff";
+
+      const withDates = config.entries.filter((e) => e.date);
+      const sorted = [...withDates].sort(
+        (a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime()
+      );
+      const latest = sorted[0];
+      const days = latest ? daysSince(latest.date!) : 0;
+
+      const timeline = [...config.entries].sort((a, b) => {
+        if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (a.date) return -1;
+        if (b.date) return 1;
+        return 0;
+      });
+
+      const mount = document.getElementById("mount")!;
+      mount.innerHTML = `
+        <div class="ds-root" style="--bg: ${bg}; --accent: ${accent};">
+          <main class="ds-main">
+            ${latest ? `
+              <p class="ds-label" data-i18n="itHasBeen">${t(lang, "itHasBeen")}</p>
+              <p class="ds-number">
+                <span class="ds-count" data-date="${latest.date}">${days}</span>
+              </p>
+              <p class="ds-unit">
+                <span data-i18n="${days === 1 ? "day" : "days"}">${days === 1 ? t(lang, "day") : t(lang, "days")}</span>
+              </p>
+              <p class="ds-since">
+                <span data-i18n="sinceTheLast">${t(lang, "sinceTheLast")}</span>
+                ${escHtml(config.title)}.
+              </p>
+              <p class="ds-latest">
+                <span data-i18n="mostRecent">${t(lang, "mostRecent")}</span>:
+                ${latest.url
+                  ? `<a href="${escHtml(latest.url)}" target="_blank" rel="noopener">${escHtml(latest.name)}</a>`
+                  : `<strong>${escHtml(latest.name)}</strong>`}
+                ${latest.date ? ` &mdash; <time class="ds-latest-date" data-date="${latest.date}">${formatDateLocale(latest.date, lang)}</time>` : ""}
+              </p>
+            ` : `<p class="ds-since">${escHtml(config.title)}</p>`}
+          </main>
+          ${timeline.length > 0 ? `
+          <section class="ds-timeline">
+            <h2 data-i18n="timeline">${t(lang, "timeline")}</h2>
+            <ul>
+              ${timeline.map(e => `
+                <li>
+                  <span class="dot"></span>
+                  <div>
+                    ${e.url
+                      ? `<a href="${escHtml(e.url)}" target="_blank" rel="noopener">${escHtml(e.name)}</a>`
+                      : `<strong>${escHtml(e.name)}</strong>`}
+                    ${e.date ? `<time data-date="${e.date}">${formatDateLocale(e.date, lang)}</time>` : ""}
+                  </div>
+                </li>
+              `).join("")}
+            </ul>
+          </section>` : ""}
+          <footer>
+            <a href="/" data-i18n="createYourOwn">${t(lang, "createYourOwn")}</a>
+            <span class="sep">&middot;</span>
+            <a href="/?edit=${encodeURIComponent(hash)}" data-i18n="edit">${t(lang, "edit")}</a>
+          </footer>
+        </div>
+      `;
+
+      document.title = latest
+        ? `${days} ${t(lang, days === 1 ? "day" : "days")} - ${config.title}`
+        : config.title;
+    }
+
+    let currentConfig: DaySinceConfig | null = null;
+    let currentHash = "";
+
+    function init() {
+      const hash = window.location.hash.slice(1);
+      const loading = document.getElementById("loading")!;
+      const lang = getLang();
+
+      if (!hash) {
+        loading.innerHTML = `${t(lang, "noData")}<br><a href="/">${t(lang, "goToBuilder")}</a>`;
+        return;
+      }
+
+      const config = decode(hash);
+      if (!config) {
+        loading.innerHTML = `${t(lang, "couldNotDecode")}<br><a href="/">${t(lang, "goToBuilder")}</a>`;
+        return;
+      }
+
+      currentConfig = config;
+      currentHash = hash;
+      loading.style.display = "none";
+      render(config, lang, hash);
+    }
+
+    init();
+    window.addEventListener("hashchange", init);
+    window.addEventListener("langchange", () => {
+      if (currentConfig) {
+        render(currentConfig, getLang(), currentHash);
+      }
+    });
+  </script>
 </Base>
 
-<script>
-  import { decode, daysSince, formatDate } from "../lib/codec";
-  import type { DaySinceConfig } from "../lib/types";
-
-  function render(config: DaySinceConfig) {
-    const bg = config.bg ?? "#f0f8ff";
-    const accent = config.accent ?? "#4444ff";
-
-    const sorted = [...config.entries].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    const latest = sorted[0];
-    const days = latest ? daysSince(latest.date) : 0;
-    const timeline = [...sorted].reverse();
-
-    const mount = document.getElementById("mount")!;
-    mount.innerHTML = `
-      <div class="ds-root" style="--bg: ${bg}; --accent: ${accent};">
-        <main class="ds-main">
-          <h1>
-            It has been
-            <span class="ds-count" data-date="${latest?.date ?? ""}">${days}</span>
-            ${days === 1 ? "day" : "days"} since the last ${config.title}.
-          </h1>
-          ${latest ? `<p class="ds-latest">
-            Most recent:
-            ${latest.url
-              ? `<a href="${latest.url}" target="_blank" rel="noopener">${latest.name}</a>`
-              : `<strong>${latest.name}</strong>`}
-            &mdash; ${formatDate(latest.date)}
-          </p>` : ""}
-        </main>
-        ${timeline.length > 0 ? `
-        <section class="ds-timeline">
-          <h2>Timeline</h2>
-          <ul>
-            ${timeline.map(e => `
-              <li>
-                <span class="dot"></span>
-                <div>
-                  ${e.url
-                    ? `<a href="${e.url}" target="_blank" rel="noopener">${e.name}</a>`
-                    : `<strong>${e.name}</strong>`}
-                  <time>${formatDate(e.date)}</time>
-                </div>
-              </li>
-            `).join("")}
-          </ul>
-        </section>` : ""}
-        <footer><a href="/">Create your own</a></footer>
-      </div>
-    `;
-
-    document.title = `${days} days since the last ${config.title}`;
-  }
-
-  function init() {
-    const hash = window.location.hash.slice(1);
-    const loading = document.getElementById("loading")!;
-
-    if (!hash) {
-      loading.textContent = "No data in URL. Go to the builder to create a link.";
-      loading.innerHTML += '<br><a href="/">Go to builder</a>';
-      return;
-    }
-
-    const config = decode(hash);
-    if (!config) {
-      loading.textContent = "Could not decode URL data.";
-      loading.innerHTML += '<br><a href="/">Go to builder</a>';
-      return;
-    }
-
-    loading.hidden = true;
-    render(config);
-  }
-
-  init();
-  window.addEventListener("hashchange", init);
-</script>
-
-<style>
+<style is:global>
   .loading {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
     min-height: 100vh;
-    font-size: 1.25rem;
-    opacity: 0.5;
+    font-size: 1.1rem;
+    opacity: 0.4;
     text-align: center;
+    gap: 0.5rem;
   }
-  .loading a {
-    display: inline-block;
-    margin-top: 0.5rem;
-  }
-
-  /* Mirror the DaySinceViewer styles for client-rendered content */
-  :global(.ds-root) {
+  .ds-root {
     background: var(--bg);
     min-height: 100vh;
     width: 100%;
@@ -117,74 +143,120 @@ import Base from "../layouts/Base.astro";
     flex-direction: column;
     align-items: center;
     padding: 2rem;
-    background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
-  :global(.ds-main) {
-    max-width: 800px;
+  .ds-main {
+    max-width: 900px;
+    width: 100%;
     text-align: center;
-    margin-top: 4rem;
+    margin-top: 6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
-  :global(.ds-main h1) {
-    font-size: clamp(2rem, 6vw, 4.5rem);
-    line-height: 1.2;
-    margin-bottom: 1.5rem;
+  .ds-label {
+    font-size: clamp(1rem, 2.5vw, 1.4rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.5;
+    margin-bottom: 0.25rem;
   }
-  :global(.ds-count) {
-    color: var(--accent);
+  .ds-number {
+    font-size: clamp(5rem, 18vw, 12rem);
     font-weight: 900;
+    line-height: 1;
+    color: var(--accent);
   }
-  :global(.ds-latest) {
-    font-size: 1.25rem;
-    opacity: 0.8;
+  .ds-unit {
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    opacity: 0.6;
+    margin-bottom: 1rem;
   }
-  :global(.ds-latest a) {
+  .ds-since {
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+    line-height: 1.4;
+    max-width: 650px;
+    opacity: 0.7;
+  }
+  .ds-latest {
+    margin-top: 2rem;
+    font-size: 0.95rem;
+    opacity: 0.55;
+  }
+  .ds-latest a {
     font-weight: 700;
     text-decoration: underline;
+    text-underline-offset: 2px;
   }
-  :global(.ds-timeline) {
-    margin-top: 4rem;
+  .ds-timeline {
+    margin-top: 5rem;
     max-width: 600px;
     width: 100%;
   }
-  :global(.ds-timeline h2) {
+  .ds-timeline h2 {
     text-align: center;
-    margin-bottom: 1.5rem;
-    font-size: 1.75rem;
+    margin-bottom: 2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.4;
   }
-  :global(.ds-timeline ul) {
+  .ds-timeline ul {
     list-style: none;
-    border-left: 3px solid var(--accent);
-    margin-left: 1rem;
+    border-left: 2px solid var(--accent);
+    margin-left: 0.75rem;
     padding-left: 1.5rem;
   }
-  :global(.ds-timeline li) {
+  .ds-timeline li {
     position: relative;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
   }
-  :global(.dot) {
+  .dot {
     position: absolute;
-    left: -1.85rem;
-    top: 0.35rem;
-    width: 14px;
-    height: 14px;
-    background: white;
-    border: 3px solid var(--accent);
+    left: -1.82rem;
+    top: 0.3rem;
+    width: 12px;
+    height: 12px;
+    background: var(--bg, #f0f8ff);
+    border: 2.5px solid var(--accent);
     border-radius: 50%;
   }
-  :global(.ds-timeline a),
-  :global(.ds-timeline strong) {
-    font-size: 1.1rem;
+  .ds-timeline a,
+  .ds-timeline strong {
+    font-size: 1rem;
+    font-weight: 600;
   }
-  :global(.ds-timeline time) {
+  .ds-timeline a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgba(0,0,0,0.2);
+  }
+  .ds-timeline a:hover {
+    text-decoration-color: currentColor;
+  }
+  .ds-timeline time {
     display: block;
-    font-size: 0.85rem;
-    opacity: 0.6;
+    font-size: 0.8rem;
+    opacity: 0.45;
+    margin-top: 0.1rem;
   }
-  :global(.ds-root footer) {
+  .ds-root footer {
     margin-top: auto;
-    padding: 2rem;
-    opacity: 0.5;
-    font-size: 0.9rem;
+    padding: 2.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    opacity: 0.45;
   }
+  .ds-root footer:hover { opacity: 0.7; }
+  .ds-root footer a { text-decoration: none; }
+  .ds-root footer a:hover { text-decoration: underline; }
+  .sep { opacity: 0.4; }
 </style>

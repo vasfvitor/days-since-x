@@ -1,4 +1,4 @@
-import LZString from "lz-string";
+import * as LZString from "lz-string";
 import type { DaySinceConfig } from "./types";
 
 export function encode(config: DaySinceConfig): string {
@@ -21,10 +21,11 @@ export function daysSince(dateStr: string): number {
   return Math.floor((now.getTime() - then.getTime()) / 86_400_000);
 }
 
-export function formatDate(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+/** Resolve a URL-like input: full URL kept as-is, "user/repo" → GitHub link */
+export function resolveUrl(input: string): string | undefined {
+  const v = input.trim();
+  if (!v) return undefined;
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  if (v.includes("/")) return `https://github.com/${v}`;
+  return undefined;
 }

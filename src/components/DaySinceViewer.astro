@@ -1,52 +1,66 @@
 ---
-/**
- * Server-rendered "days since" counter + timeline.
- * Receives the full config as a prop, works for both preset and dynamic pages.
- * A small client script updates the counter live so the number stays fresh.
- */
 import type { DaySinceConfig } from "../lib/types";
-import { daysSince, formatDate } from "../lib/codec";
+import { daysSince } from "../lib/codec";
+import { formatDateLocale } from "../lib/i18n";
 
 interface Props {
   config: DaySinceConfig;
+  hash?: string;
 }
 
-const { config } = Astro.props;
+const { config, hash } = Astro.props;
 const bg = config.bg ?? "#f0f8ff";
 const accent = config.accent ?? "#4444ff";
 
-// Sort entries newest-first for display, keep a copy oldest-first for timeline
-const sorted = [...config.entries].sort(
-  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+const withDates = config.entries.filter((e) => e.date);
+const sorted = [...withDates].sort(
+  (a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime()
 );
 const latest = sorted[0];
-const days = latest ? daysSince(latest.date) : 0;
-const timeline = [...sorted].reverse();
+const days = latest ? daysSince(latest.date!) : 0;
+
+const timeline = [...config.entries].sort((a, b) => {
+  if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+  if (a.date) return -1;
+  if (b.date) return 1;
+  return 0;
+});
+
+const defaultLang = "pt-BR";
 ---
 
 <div class="ds-root" style={`--bg: ${bg}; --accent: ${accent};`}>
   <main class="ds-main">
-    <h1>
-      It has been
-      <span class="ds-count" data-date={latest?.date}>{days}</span>
-      {days === 1 ? "day" : "days"} since the last {config.title}.
-    </h1>
-
-    {latest && (
-      <p class="ds-latest">
-        Most recent:
-        {latest.url
-          ? <a href={latest.url} target="_blank" rel="noopener">{latest.name}</a>
-          : <strong>{latest.name}</strong>
-        }
-        &mdash; {formatDate(latest.date)}
-      </p>
+    {latest ? (
+      <Fragment>
+        <p class="ds-label" data-i18n="itHasBeen">Faz</p>
+        <p class="ds-number">
+          <span class="ds-count" data-date={latest.date}>{days}</span>
+        </p>
+        <p class="ds-unit">
+          <span class="ds-days" data-i18n={days === 1 ? "day" : "days"}>{days === 1 ? "dia" : "dias"}</span>
+        </p>
+        <p class="ds-since">
+          <span data-i18n="sinceTheLast">desde o último</span>{" "}
+          {config.title}.
+        </p>
+        <p class="ds-latest">
+          <span data-i18n="mostRecent">Mais recente</span>:{" "}
+          {latest.url
+            ? <a href={latest.url} target="_blank" rel="noopener">{latest.name}</a>
+            : <strong>{latest.name}</strong>
+          }
+          {latest.date && <Fragment> &mdash; <time class="ds-latest-date" data-date={latest.date}>{formatDateLocale(latest.date, defaultLang)}</time></Fragment>}
+        </p>
+      </Fragment>
+    ) : (
+      <p class="ds-since">{config.title}</p>
     )}
   </main>
 
   {timeline.length > 0 && (
     <section class="ds-timeline">
-      <h2>Timeline</h2>
+      <h2 data-i18n="timeline">Linha do tempo</h2>
       <ul>
         {timeline.map((e) => (
           <li>
@@ -56,7 +70,7 @@ const timeline = [...sorted].reverse();
                 ? <a href={e.url} target="_blank" rel="noopener">{e.name}</a>
                 : <strong>{e.name}</strong>
               }
-              <time>{formatDate(e.date)}</time>
+              {e.date && <time data-date={e.date}>{formatDateLocale(e.date, defaultLang)}</time>}
             </div>
           </li>
         ))}
@@ -65,21 +79,38 @@ const timeline = [...sorted].reverse();
   )}
 
   <footer>
-    <a href="/">Create your own</a>
+    <a href="/" data-i18n="createYourOwn">Crie o seu</a>
+    {hash && (
+      <Fragment>
+        <span class="sep">&middot;</span>
+        <a href={`/?edit=${hash}`} data-i18n="edit">Editar</a>
+      </Fragment>
+    )}
   </footer>
 </div>
 
 <script>
-  // Live-update counter on the client
-  function update() {
+  import { getLang, formatDateLocale } from "../lib/i18n";
+
+  function updateDates() {
+    const lang = getLang();
+    document.querySelectorAll<HTMLTimeElement>("time[data-date]").forEach((el) => {
+      el.textContent = formatDateLocale(el.dataset.date!, lang);
+    });
+  }
+
+  function updateCounter() {
     const el = document.querySelector<HTMLSpanElement>(".ds-count");
     if (!el?.dataset.date) return;
     const then = new Date(el.dataset.date + "T00:00:00").getTime();
     const days = Math.floor((Date.now() - then) / 86_400_000);
     el.textContent = String(days);
   }
-  update();
-  setInterval(update, 60_000);
+
+  updateDates();
+  updateCounter();
+  setInterval(updateCounter, 60_000);
+  window.addEventListener("langchange", updateDates);
 </script>
 
 <style>
@@ -91,74 +122,126 @@ const timeline = [...sorted].reverse();
     flex-direction: column;
     align-items: center;
     padding: 2rem;
-    background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
   .ds-main {
-    max-width: 800px;
+    max-width: 900px;
+    width: 100%;
     text-align: center;
-    margin-top: 4rem;
+    margin-top: 6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
   }
-  h1 {
-    font-size: clamp(2rem, 6vw, 4.5rem);
-    line-height: 1.2;
-    margin-bottom: 1.5rem;
+  .ds-label {
+    font-size: clamp(1rem, 2.5vw, 1.4rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.5;
+    margin-bottom: 0.25rem;
+  }
+  .ds-number {
+    font-size: clamp(5rem, 18vw, 12rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--accent);
   }
   .ds-count {
-    color: var(--accent);
-    font-weight: 900;
+    color: inherit;
+  }
+  .ds-unit {
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    opacity: 0.6;
+    margin-bottom: 1rem;
+  }
+  .ds-since {
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+    line-height: 1.4;
+    max-width: 650px;
+    opacity: 0.7;
   }
   .ds-latest {
-    font-size: 1.25rem;
-    opacity: 0.8;
+    margin-top: 2rem;
+    font-size: 0.95rem;
+    opacity: 0.55;
   }
   .ds-latest a {
     font-weight: 700;
     text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .ds-timeline {
-    margin-top: 4rem;
+    margin-top: 5rem;
     max-width: 600px;
     width: 100%;
   }
   .ds-timeline h2 {
     text-align: center;
-    margin-bottom: 1.5rem;
-    font-size: 1.75rem;
+    margin-bottom: 2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.4;
   }
   .ds-timeline ul {
     list-style: none;
-    border-left: 3px solid var(--accent);
-    margin-left: 1rem;
+    border-left: 2px solid var(--accent);
+    margin-left: 0.75rem;
     padding-left: 1.5rem;
   }
   .ds-timeline li {
     position: relative;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
   }
   .dot {
     position: absolute;
-    left: -1.85rem;
-    top: 0.35rem;
-    width: 14px;
-    height: 14px;
-    background: white;
-    border: 3px solid var(--accent);
+    left: -1.82rem;
+    top: 0.3rem;
+    width: 12px;
+    height: 12px;
+    background: var(--bg, #f0f8ff);
+    border: 2.5px solid var(--accent);
     border-radius: 50%;
   }
   .ds-timeline a,
   .ds-timeline strong {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .ds-timeline a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgba(0,0,0,0.2);
+  }
+  .ds-timeline a:hover {
+    text-decoration-color: currentColor;
   }
   .ds-timeline time {
     display: block;
-    font-size: 0.85rem;
-    opacity: 0.6;
+    font-size: 0.8rem;
+    opacity: 0.45;
+    margin-top: 0.1rem;
   }
   footer {
     margin-top: auto;
-    padding: 2rem;
-    opacity: 0.5;
-    font-size: 0.9rem;
+    padding: 2.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    opacity: 0.45;
   }
+  footer:hover { opacity: 0.7; }
+  footer a {
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+  .sep { opacity: 0.4; }
 </style>
