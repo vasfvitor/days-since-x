@@ -29,9 +29,7 @@ export const translations = {
     namePlaceholder: "Nome",
     urlPlaceholder: "URL ou user/repo",
     datePlaceholder: "Data (opcional)",
-    importBtn: "Importar em lote",
     importHelp: "Uma entrada por linha: nome, url, data",
-    importParse: "Importar",
   },
   en: {
     itHasBeen: "It has been",
@@ -63,9 +61,7 @@ export const translations = {
     namePlaceholder: "Name",
     urlPlaceholder: "URL or user/repo",
     datePlaceholder: "Date (optional)",
-    importBtn: "Bulk import",
     importHelp: "One entry per line: name, url, date",
-    importParse: "Import",
   },
 } as const;
 

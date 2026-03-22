@@ -51,14 +51,10 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
       <fieldset id="entries-fieldset">
         <legend data-i18n="entriesLegend">Entradas (pelo menos uma)</legend>
         <div id="entries-list"></div>
-        <div class="entries-actions">
-          <button type="button" id="add-entry" class="btn-ghost" data-i18n="addEntry">+ Adicionar entrada</button>
-          <button type="button" id="bulk-toggle" class="btn-ghost" data-i18n="importBtn">Importar em lote</button>
-        </div>
-        <div id="bulk-import" class="bulk-import" hidden>
+        <button type="button" id="add-entry" class="btn-ghost" data-i18n="addEntry">+ Adicionar entrada</button>
+        <div class="bulk-view">
           <p class="bulk-help" data-i18n="importHelp">Uma entrada por linha: nome, url, data</p>
-          <textarea id="bulk-text" rows="5" placeholder="Feather, feather-rs/feather, 2019-09-01&#10;MCHPRS, MCHPR/MCHPRS, 2020-05-01&#10;Valence,, 2022-10-01"></textarea>
-          <button type="button" id="bulk-parse" class="btn-ghost" data-i18n="importParse">Importar</button>
+          <textarea id="bulk-text" rows="4" placeholder="Feather, feather-rs/feather, 2019-09-01&#10;MCHPRS, MCHPR/MCHPRS, 2020-05-01&#10;Valence,, 2022-10-01"></textarea>
         </div>
       </fieldset>
 
@@ -90,6 +86,7 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
 
   const list = document.getElementById("entries-list")!;
   const form = document.getElementById("builder-form") as HTMLFormElement;
+  const bulkText = document.getElementById("bulk-text") as HTMLTextAreaElement;
 
   // Color hex display
   const bgInput = document.getElementById("f-bg") as HTMLInputElement;
@@ -98,6 +95,53 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   const accentHex = document.getElementById("f-accent-hex")!;
   bgInput.addEventListener("input", () => (bgHex.textContent = bgInput.value));
   accentInput.addEventListener("input", () => (accentHex.textContent = accentInput.value));
+
+  // --- Two-way sync between rows and textarea ---
+  let syncing = false;
+
+  /** Read all rows → CSV string */
+  function rowsToText(): string {
+    return [...list.querySelectorAll(".entry-row")]
+      .map((row) => {
+        const name = (row.querySelector(".e-name") as HTMLInputElement).value;
+        const url = (row.querySelector(".e-url") as HTMLInputElement).value;
+        const date = (row.querySelector(".e-date") as HTMLInputElement).value;
+        if (!name && !url && !date) return "";
+        // Only include trailing fields if they have values
+        if (date) return `${name}, ${url}, ${date}`;
+        if (url) return `${name}, ${url}`;
+        return name;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  /** Sync rows → textarea */
+  function syncToTextarea() {
+    if (syncing) return;
+    syncing = true;
+    bulkText.value = rowsToText();
+    syncing = false;
+  }
+
+  /** Parse CSV text → recreate all rows */
+  function syncToRows() {
+    if (syncing) return;
+    syncing = true;
+    const lines = bulkText.value.split("\n");
+    // Clear existing rows
+    list.innerHTML = "";
+    let hasContent = false;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const parts = trimmed.split(",").map((s) => s.trim());
+      createEntryRow(parts[0] || "", parts[1] || "", parts[2] || "");
+      hasContent = true;
+    }
+    if (!hasContent) createEntryRow();
+    syncing = false;
+  }
 
   function createEntryRow(name = "", url = "", date = "") {
     const lang = getLang();
@@ -109,15 +153,30 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
       <input type="date" class="e-date" value="${date}" />
       <button type="button" class="btn-remove" title="Remove">&times;</button>
     `;
+    // Row input → sync to textarea
+    row.querySelectorAll("input").forEach((input) => {
+      input.addEventListener("input", syncToTextarea);
+    });
     row.querySelector(".btn-remove")!.addEventListener("click", () => {
       if (list.querySelectorAll(".entry-row").length > 1) {
         row.remove();
+        syncToTextarea();
       }
     });
     list.appendChild(row);
   }
 
-  document.getElementById("add-entry")!.addEventListener("click", () => createEntryRow());
+  document.getElementById("add-entry")!.addEventListener("click", () => {
+    createEntryRow();
+    syncToTextarea();
+  });
+
+  // Textarea input → sync to rows (debounced)
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  bulkText.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(syncToRows, 400);
+  });
 
   // Pre-fill form if ?edit=HASH is present
   const editHash = new URLSearchParams(window.location.search).get("edit");
@@ -139,40 +198,8 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     createEntryRow();
   }
 
-  // Bulk import
-  const bulkPanel = document.getElementById("bulk-import")!;
-  const bulkText = document.getElementById("bulk-text") as HTMLTextAreaElement;
-
-  document.getElementById("bulk-toggle")!.addEventListener("click", () => {
-    bulkPanel.hidden = !bulkPanel.hidden;
-    if (!bulkPanel.hidden) bulkText.focus();
-  });
-
-  document.getElementById("bulk-parse")!.addEventListener("click", () => {
-    const raw = bulkText.value.trim();
-    if (!raw) return;
-
-    const lines = raw.split("\n").filter((l) => l.trim());
-    // Remove the default empty row if it's the only one and still blank
-    const existingRows = list.querySelectorAll(".entry-row");
-    if (
-      existingRows.length === 1 &&
-      !(existingRows[0].querySelector(".e-name") as HTMLInputElement).value
-    ) {
-      existingRows[0].remove();
-    }
-
-    for (const line of lines) {
-      const parts = line.split(",").map((s) => s.trim());
-      const name = parts[0] || "";
-      const url = parts[1] || "";
-      const date = parts[2] || "";
-      if (name) createEntryRow(name, url, date);
-    }
-
-    bulkText.value = "";
-    bulkPanel.hidden = true;
-  });
+  // Initial sync: rows → textarea
+  syncToTextarea();
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -398,35 +425,32 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     background: rgba(68,68,255,0.06);
     border-radius: 6px;
   }
-  .entries-actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  .bulk-import {
+  .bulk-view {
     margin-top: 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.35rem;
   }
   .bulk-help {
-    font-size: 0.75rem;
-    opacity: 0.5;
+    font-size: 0.7rem;
+    opacity: 0.35;
     line-height: 1.4;
   }
-  .bulk-import textarea {
+  .bulk-view textarea {
     padding: 0.5rem 0.65rem;
     border: 1.5px solid #e0e0e0;
     border-radius: 6px;
-    font-size: 0.85rem;
-    font-family: inherit;
+    font-size: 0.82rem;
+    font-family: 'Inter', monospace;
     resize: vertical;
-    background: #fff;
+    background: #fafafa;
     transition: border-color 0.15s;
+    line-height: 1.5;
   }
-  .bulk-import textarea:focus {
+  .bulk-view textarea:focus {
     outline: none;
     border-color: #4444ff;
+    background: #fff;
   }
 
   /* Result */
