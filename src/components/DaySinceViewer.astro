@@ -2,6 +2,7 @@
 import type { DaySinceConfig } from "../lib/types";
 import { DEFAULTS, REPO_URL } from "../lib/defaults";
 import { prepareView } from "../lib/prepare-view";
+import { t } from "../lib/i18n";
 import "../styles/viewer.css";
 
 interface Props {
@@ -11,13 +12,16 @@ interface Props {
 }
 
 const { config, hash, presetSlug } = Astro.props;
-const { bg, accent, latest, days, record, isRecord, timeline } = prepareView(config, DEFAULTS.lang);
+const lang = DEFAULTS.lang;
+const { bg, accent, textColor, latest, days, record, isRecord, timeline } = prepareView(config, lang);
+const dayKey = days === 1 ? "day" as const : "days" as const;
+const recordDayKey = record === 1 ? "day" as const : "days" as const;
 const editUrl = presetSlug
   ? `${REPO_URL}/edit/main/src/data/presets/${presetSlug}.json`
   : hash ? `/?edit=${hash}` : undefined;
 ---
 
-<div class="ds-root" style={`--bg: ${bg}; --accent: ${accent};`}>
+<div class="ds-root" style={`--bg: ${bg}; --accent: ${accent}; --text: ${textColor};`}>
   <div class="ds-lang-corner">
     <div class="lang-switch">
       <button data-lang="pt-BR">PT</button>
@@ -28,19 +32,19 @@ const editUrl = presetSlug
   <main class="ds-main">
     {latest ? (
       <Fragment>
-        <p class="ds-label ds-fade" data-i18n="itHasBeen">Faz</p>
+        <p class="ds-label ds-fade" data-i18n="itHasBeen">{t(lang, "itHasBeen")}</p>
         <p class="ds-number ds-fade" style="animation-delay: 0.1s">
           <span class="ds-count" data-date={latest.date} data-target={days}>0</span>
         </p>
         <p class="ds-unit ds-fade" style="animation-delay: 0.15s">
-          <span class="ds-days" data-i18n={days === 1 ? "day" : "days"}>{days === 1 ? "dia" : "dias"}</span>
+          <span class="ds-days" data-i18n={dayKey}>{t(lang, dayKey)}</span>
         </p>
         <p class="ds-since ds-fade" style="animation-delay: 0.2s">
-          <span data-i18n="sinceTheLast">desde o último</span>{" "}
+          <span data-i18n="sinceTheLast">{t(lang, "sinceTheLast")}</span>{" "}
           {config.title}.
         </p>
         <p class="ds-latest ds-fade" style="animation-delay: 0.25s">
-          <span data-i18n="mostRecent">Mais recente</span>:{" "}
+          <span data-i18n="mostRecent">{t(lang, "mostRecent")}</span>:{" "}
           {latest.url
             ? <a href={latest.url} target="_blank" rel="noopener">{latest.name}</a>
             : <strong>{latest.name}</strong>
@@ -50,8 +54,8 @@ const editUrl = presetSlug
         {record > 0 && timeline.length >= 2 && (
           <p class={`ds-record ds-fade ${isRecord ? "ds-record-new" : ""}`} style="animation-delay: 0.3s">
             {isRecord
-              ? <Fragment><span data-i18n="newRecord">Novo recorde!</span></Fragment>
-              : <Fragment><span data-i18n="record">Nosso recorde é de</span> {record} {record === 1 ? "dia" : "dias"}</Fragment>
+              ? <Fragment><span data-i18n="newRecord">{t(lang, "newRecord")}</span></Fragment>
+              : <Fragment><span data-i18n="record">{t(lang, "record")}</span> {record} <span data-i18n={recordDayKey}>{t(lang, recordDayKey)}</span></Fragment>
             }
           </p>
         )}
@@ -63,7 +67,7 @@ const editUrl = presetSlug
 
   {timeline.length > 0 && (
     <section class="ds-timeline ds-fade" style="animation-delay: 0.35s">
-      <h2 data-i18n="timeline">Linha do tempo</h2>
+      <h2 data-i18n="timeline">{t(lang, "timeline")}</h2>
       <ul>
         {timeline.map((e, i) => (
           <li class="ds-fade" style={`animation-delay: ${0.4 + i * 0.04}s`}>
@@ -82,13 +86,13 @@ const editUrl = presetSlug
   )}
 
   <footer class="ds-fade" style="animation-delay: 0.5s">
-    <a href="/" data-i18n="createYourOwn">Crie o seu</a>
+    <a href="/" data-i18n="createYourOwn">{t(lang, "createYourOwn")}</a>
     {editUrl && (
       <Fragment>
         <span class="sep">&middot;</span>
         {presetSlug
-          ? <a href={editUrl} target="_blank" rel="noopener" data-i18n="editOnGithub">Editar no GitHub</a>
-          : <a href={editUrl} data-i18n="edit">Editar</a>
+          ? <a href={editUrl} target="_blank" rel="noopener" data-i18n="editOnGithub">{t(lang, "editOnGithub")}</a>
+          : <a href={editUrl} data-i18n="edit">{t(lang, "edit")}</a>
         }
       </Fragment>
     )}

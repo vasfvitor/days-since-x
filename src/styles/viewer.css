@@ -8,6 +8,7 @@
 }
 .ds-root {
   background: var(--bg);
+  color: var(--text, #1a1a2e);
   min-height: 100vh;
   width: 100%;
   display: flex;
@@ -15,9 +16,10 @@
   align-items: center;
   padding: 2rem;
   position: relative;
-  background-image: radial-gradient(circle, rgba(0,0,0,0.025) 1px, transparent 1px);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--text, #1a1a2e) 4%, transparent) 1px, transparent 1px);
   background-size: 28px 28px;
 }
+.ds-root a { color: inherit; }
 .ds-lang-corner {
   position: absolute;
   top: 1.25rem;
@@ -77,11 +79,19 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: rgba(0,0,0,0.2);
+  text-decoration-color: color-mix(in srgb, currentColor 25%, transparent);
   transition: text-decoration-color 0.2s;
+}
+.ds-latest a::after {
+  content: " \2197";
+  font-size: 0.7em;
+  opacity: 0.4;
 }
 .ds-latest a:hover {
   text-decoration-color: currentColor;
+}
+.ds-latest a:hover::after {
+  opacity: 0.7;
 }
 .ds-record {
   margin-top: 1.5rem;
@@ -123,7 +133,7 @@
   transition: background 0.2s;
 }
 .ds-timeline li:hover {
-  background: rgba(0,0,0,0.02);
+  background: color-mix(in srgb, var(--text, #1a1a2e) 3%, transparent);
 }
 .dot {
   position: absolute;
@@ -148,11 +158,19 @@
 .ds-timeline a {
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(0,0,0,0.15);
+  text-decoration-color: color-mix(in srgb, currentColor 20%, transparent);
   transition: text-decoration-color 0.2s;
+}
+.ds-timeline a::after {
+  content: " \2197";
+  font-size: 0.7em;
+  opacity: 0.4;
 }
 .ds-timeline a:hover {
   text-decoration-color: currentColor;
+}
+.ds-timeline a:hover::after {
+  opacity: 0.7;
 }
 .ds-timeline time {
   display: block;

@@ -15,12 +15,21 @@ export interface DaySinceView {
   title: string;
   bg: string;
   accent: string;
+  textColor: string;
   latest: ViewEntry | null;
   days: number;
   dayWord: "day" | "days";
   record: number;
   isRecord: boolean;
   timeline: ViewEntry[];
+}
+
+function isDark(hex: string): boolean {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2) || c.substring(0, 1).repeat(2), 16);
+  const g = parseInt(c.substring(2, 4) || c.substring(1, 2).repeat(2), 16);
+  const b = parseInt(c.substring(4, 6) || c.substring(2, 3).repeat(2), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
 }
 
 export function prepareView(config: DaySinceConfig, lang: Lang): DaySinceView {
@@ -73,5 +82,7 @@ export function prepareView(config: DaySinceConfig, lang: Lang): DaySinceView {
   const isRecord = days > 0 && days >= record;
   if (days > record) record = days;
 
-  return { title: config.title, bg, accent, latest, days, dayWord: days === 1 ? "day" : "days", record, isRecord, timeline };
+  const textColor = isDark(bg) ? "#f0f0f5" : "#1a1a2e";
+
+  return { title: config.title, bg, accent, textColor, latest, days, dayWord: days === 1 ? "day" : "days", record, isRecord, timeline };
 }

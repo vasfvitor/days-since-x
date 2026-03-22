@@ -96,13 +96,14 @@ import "../styles/viewer.css";
     }
 
     function render(config: DaySinceConfig, lang: Lang, hash: string) {
-      const { bg, accent, latest, days, record, isRecord, timeline } = prepareView(config, lang);
+      const { bg, accent, textColor, latest, days, record, isRecord, timeline } = prepareView(config, lang);
       const mount = document.getElementById("mount")!;
       mount.textContent = "";
 
       const root = el("div", "ds-root");
       root.style.setProperty("--bg", bg);
       root.style.setProperty("--accent", accent);
+      root.style.setProperty("--text", textColor);
 
       // Lang switch
       const langCorner = el("div", "ds-lang-corner");

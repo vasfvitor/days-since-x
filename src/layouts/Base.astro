@@ -23,6 +23,20 @@ const { title = "Days Since" } = Astro.props;
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <style is:global>
+      :root {
+        --c-text: #1a1a2e;
+        --c-text-muted: rgba(26, 26, 46, 0.55);
+        --c-text-faint: rgba(26, 26, 46, 0.35);
+        --c-border: #e2e0dd;
+        --c-surface: #faf9f7;
+        --c-brand: #4444ff;
+        --c-brand-light: rgba(68, 68, 255, 0.06);
+        --c-dark: #1a1a2e;
+        --r-sm: 8px;
+        --r-md: 10px;
+        --r-lg: 14px;
+        --r-pill: 20px;
+      }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
         font-family: 'Outfit', system-ui, -apple-system, sans-serif;
@@ -30,7 +44,7 @@ const { title = "Days Since" } = Astro.props;
         display: flex;
         flex-direction: column;
         align-items: center;
-        color: #1a1a2e;
+        color: var(--c-text);
         -webkit-font-smoothing: antialiased;
       }
       a { color: inherit; }
