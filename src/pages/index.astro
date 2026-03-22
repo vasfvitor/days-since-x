@@ -13,8 +13,16 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
 <Base title="Days Since">
   <div class="builder">
     <header class="builder-header">
-      <h1>Days Since</h1>
-      <p class="subtitle" data-i18n="builderSubtitle">Crie um contador "dias desde" compartilhável. Preencha o formulário e pegue seu link.</p>
+      <div class="header-row">
+        <div>
+          <h1>Days Since</h1>
+          <p class="subtitle" data-i18n="builderSubtitle">Crie um contador "dias desde" compartilhável. Preencha o formulário e pegue seu link.</p>
+        </div>
+        <div class="lang-switch">
+          <button data-lang="pt-BR">PT</button>
+          <button data-lang="en">EN</button>
+        </div>
+      </div>
     </header>
 
     {presets.length > 0 && (
@@ -51,11 +59,19 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
 
       <fieldset id="entries-fieldset">
         <legend data-i18n="entriesLegend">Entradas (pelo menos uma)</legend>
+        <div class="entries-header">
+          <span data-i18n="namePlaceholder">Nome</span>
+          <span data-i18n="urlPlaceholder">URL ou user/repo</span>
+          <span data-i18n="datePlaceholder">Data (opcional)</span>
+          <span></span>
+        </div>
         <div id="entries-list"></div>
-        <button type="button" id="add-entry" class="btn-ghost" data-i18n="addEntry">+ Adicionar entrada</button>
-        <div class="bulk-view">
-          <p class="bulk-help" data-i18n="importHelp">Uma entrada por linha: nome, url, data</p>
-          <textarea id="bulk-text" rows="4" placeholder="Feather, feather-rs/feather, 2019-09-01&#10;MCHPRS, MCHPR/MCHPRS, 2020-05-01&#10;Valence,, 2022-10-01"></textarea>
+        <div class="entries-actions">
+          <button type="button" id="add-entry" class="btn-ghost" data-i18n="addEntry">+ Adicionar entrada</button>
+          <button type="button" id="toggle-bulk" class="btn-ghost btn-bulk-toggle" data-i18n="importHelp">Uma entrada por linha: nome, url, data</button>
+        </div>
+        <div id="bulk-wrap" class="bulk-view" hidden>
+          <textarea id="bulk-text" rows="5" placeholder="Feather, feather-rs/feather, 2019-09-01&#10;MCHPRS, MCHPR/MCHPRS, 2020-05-01&#10;Valence,, 2022-10-01"></textarea>
         </div>
       </fieldset>
 
@@ -72,10 +88,6 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     </div>
 
     <footer class="builder-footer">
-      <div class="lang-switch">
-        <button data-lang="pt-BR">PT</button>
-        <button data-lang="en">EN</button>
-      </div>
     </footer>
   </div>
 </Base>
@@ -88,6 +100,7 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   const list = document.getElementById("entries-list")!;
   const form = document.getElementById("builder-form") as HTMLFormElement;
   const bulkText = document.getElementById("bulk-text") as HTMLTextAreaElement;
+  const bulkWrap = document.getElementById("bulk-wrap")!;
 
   // Color hex display
   const bgInput = document.getElementById("f-bg") as HTMLInputElement;
@@ -96,6 +109,15 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   const accentHex = document.getElementById("f-accent-hex")!;
   bgInput.addEventListener("input", () => (bgHex.textContent = bgInput.value));
   accentInput.addEventListener("input", () => (accentHex.textContent = accentInput.value));
+
+  document.getElementById("toggle-bulk")!.addEventListener("click", () => {
+    const isHidden = bulkWrap.hidden;
+    bulkWrap.hidden = !isHidden;
+    if (isHidden) {
+      bulkText.value = rowsToText();
+      bulkText.focus();
+    }
+  });
 
   // --- Two-way sync between rows and textarea ---
   let syncing = false;
@@ -108,7 +130,6 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
         const url = (row.querySelector(".e-url") as HTMLInputElement).value;
         const date = (row.querySelector(".e-date") as HTMLInputElement).value;
         if (!name && !url && !date) return "";
-        // Only include trailing fields if they have values
         if (date) return `${name}, ${url}, ${date}`;
         if (url) return `${name}, ${url}`;
         return name;
@@ -130,7 +151,6 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     if (syncing) return;
     syncing = true;
     const lines = bulkText.value.split("\n");
-    // Clear existing rows
     list.innerHTML = "";
     let hasContent = false;
     for (const line of lines) {
@@ -154,7 +174,6 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
       <input type="date" class="e-date" value="${date}" />
       <button type="button" class="btn-remove" title="Remove">&times;</button>
     `;
-    // Row input → sync to textarea
     row.querySelectorAll("input").forEach((input) => {
       input.addEventListener("input", syncToTextarea);
     });
@@ -234,7 +253,9 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     resultUrl.value = url;
     openBtn.href = url;
     resultDiv.hidden = false;
+    resultDiv.classList.add("result-enter");
     resultUrl.select();
+    resultDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
 
   document.getElementById("copy-btn")!.addEventListener("click", () => {
@@ -243,7 +264,11 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     navigator.clipboard.writeText(input.value);
     const btn = document.getElementById("copy-btn")!;
     btn.textContent = t(lang, "copied");
-    setTimeout(() => (btn.textContent = t(lang, "copy")), 2000);
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.textContent = t(lang, "copy");
+      btn.classList.remove("copied");
+    }, 2000);
   });
 </script>
 
@@ -260,16 +285,23 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   .builder-header {
     margin-bottom: 2.5rem;
   }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
   h1 {
     font-size: 1.75rem;
-    font-weight: 900;
-    letter-spacing: -0.02em;
+    font-weight: 800;
+    letter-spacing: -0.03em;
     margin-bottom: 0.4rem;
   }
   .subtitle {
-    font-size: 0.9rem;
-    opacity: 0.5;
-    line-height: 1.5;
+    font-size: 0.88rem;
+    opacity: 0.45;
+    line-height: 1.55;
+    font-weight: 400;
   }
   .presets {
     margin-bottom: 2rem;
@@ -279,25 +311,26 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     align-items: center;
   }
   .presets-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.4;
+    letter-spacing: 0.1em;
+    opacity: 0.35;
     margin-right: 0.25rem;
   }
   .presets a {
     background: rgba(68,68,255,0.06);
     color: #4444ff;
-    padding: 0.25rem 0.6rem;
+    padding: 0.25rem 0.65rem;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     text-decoration: none;
     font-weight: 500;
-    transition: background 0.15s;
+    transition: all 0.2s ease;
   }
   .presets a:hover {
-    background: rgba(68,68,255,0.12);
+    background: rgba(68,68,255,0.14);
+    transform: translateY(-1px);
   }
   form {
     display: flex;
@@ -309,18 +342,18 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     flex-direction: column;
     gap: 0.35rem;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     letter-spacing: 0.01em;
   }
   input[type="text"],
   input[type="url"],
   input[type="date"] {
-    padding: 0.6rem 0.75rem;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    padding: 0.65rem 0.8rem;
+    border: 1.5px solid #e2e0dd;
+    border-radius: 10px;
+    font-size: 0.92rem;
     font-family: inherit;
-    transition: border-color 0.15s;
+    transition: border-color 0.2s, box-shadow 0.2s;
     background: #fff;
   }
   input[type="text"]:focus,
@@ -328,6 +361,7 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   input[type="date"]:focus {
     outline: none;
     border-color: #4444ff;
+    box-shadow: 0 0 0 3px rgba(68,68,255,0.08);
   }
   .color-row {
     display: flex;
@@ -340,27 +374,53 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     gap: 0.5rem;
   }
   input[type="color"] {
-    width: 40px;
-    height: 32px;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 6px;
+    width: 42px;
+    height: 34px;
+    border: 1.5px solid #e2e0dd;
+    border-radius: 8px;
     cursor: pointer;
     padding: 2px;
+    transition: border-color 0.2s;
+  }
+  input[type="color"]:hover {
+    border-color: #bbb;
   }
   .color-hex {
-    font-family: 'Inter', monospace;
-    font-size: 0.8rem;
-    opacity: 0.5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    opacity: 0.45;
   }
   fieldset {
-    border: 1.5px solid #e8e8e8;
-    border-radius: 10px;
+    border: 1.5px solid #eae8e5;
+    border-radius: 12px;
     padding: 1rem;
   }
   legend {
     font-weight: 700;
-    font-size: 0.8rem;
-    padding: 0 0.25rem;
+    font-size: 0.78rem;
+    padding: 0 0.3rem;
+  }
+  .entries-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+    padding: 0 0.1rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.3;
+  }
+  .entries-header span:nth-child(3) {
+    min-width: 130px;
+  }
+  .entries-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
   }
   :global(.entry-row) {
     display: grid;
@@ -370,44 +430,52 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     align-items: center;
   }
   @media (max-width: 500px) {
+    .entries-header { display: none; }
     :global(.entry-row) {
       grid-template-columns: 1fr 1fr;
     }
   }
   :global(.entry-row input) {
-    padding: 0.45rem 0.6rem;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    border: 1.5px solid #e2e0dd;
+    border-radius: 8px;
     font-size: 0.85rem;
     font-family: inherit;
     background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
   :global(.entry-row input:focus) {
     outline: none;
     border-color: #4444ff;
+    box-shadow: 0 0 0 3px rgba(68,68,255,0.08);
   }
   :global(.btn-remove) {
     background: none;
     border: none;
     font-size: 1.2rem;
     cursor: pointer;
-    opacity: 0.3;
+    opacity: 0.2;
     padding: 0.25rem;
-    transition: opacity 0.15s;
+    transition: all 0.2s;
     line-height: 1;
+    border-radius: 6px;
   }
-  :global(.btn-remove:hover) { opacity: 0.8; }
+  :global(.btn-remove:hover) {
+    opacity: 0.7;
+    background: rgba(255,0,0,0.06);
+    color: #c00;
+  }
   .btn-primary, .btn-ghost {
-    padding: 0.65rem 1.2rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    padding: 0.7rem 1.3rem;
+    border-radius: 10px;
+    font-size: 0.88rem;
     font-weight: 600;
     cursor: pointer;
     border: none;
     text-decoration: none;
     text-align: center;
     font-family: inherit;
-    transition: all 0.15s;
+    transition: all 0.2s ease;
   }
   .btn-primary {
     background: #1a1a2e;
@@ -415,59 +483,88 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   }
   .btn-primary:hover {
     background: #2d2d4e;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26,26,46,0.2);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: none;
   }
   .btn-ghost {
     background: transparent;
     color: #4444ff;
-    font-size: 0.85rem;
-    padding: 0.4rem;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.5rem;
   }
   .btn-ghost:hover {
     background: rgba(68,68,255,0.06);
-    border-radius: 6px;
+    border-radius: 8px;
+  }
+  .btn-bulk-toggle {
+    color: rgba(0,0,0,0.35);
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+  .btn-bulk-toggle:hover {
+    color: rgba(0,0,0,0.55);
+    background: rgba(0,0,0,0.03);
   }
   .bulk-view {
     margin-top: 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    animation: slideDown 0.2s ease;
   }
-  .bulk-help {
-    font-size: 0.7rem;
-    opacity: 0.35;
-    line-height: 1.4;
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   .bulk-view textarea {
-    padding: 0.5rem 0.65rem;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 6px;
+    padding: 0.6rem 0.7rem;
+    border: 1.5px solid #e2e0dd;
+    border-radius: 8px;
     font-size: 0.82rem;
-    font-family: 'Inter', monospace;
+    font-family: 'JetBrains Mono', monospace;
     resize: vertical;
-    background: #fafafa;
-    transition: border-color 0.15s;
-    line-height: 1.5;
+    background: #faf9f7;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    line-height: 1.6;
   }
   .bulk-view textarea:focus {
     outline: none;
     border-color: #4444ff;
     background: #fff;
+    box-shadow: 0 0 0 3px rgba(68,68,255,0.08);
   }
 
   /* Result */
   .result {
     margin-top: 2rem;
     padding: 1.5rem;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 10px;
-    background: #fafafa;
+    border: 1.5px solid #e2e0dd;
+    border-radius: 14px;
+    background: #faf9f7;
+  }
+  .result.result-enter {
+    animation: resultReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes resultReveal {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
   .result-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    opacity: 0.4;
+    letter-spacing: 0.12em;
+    opacity: 0.35;
     margin-bottom: 0.75rem;
   }
   .result-box {
@@ -477,27 +574,32 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   }
   .result-box input[type="text"] {
     flex: 1;
-    padding: 0.5rem 0.7rem;
-    font-family: 'Inter', monospace;
-    font-size: 0.8rem;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 6px;
+    padding: 0.55rem 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    border: 1.5px solid #e2e0dd;
+    border-radius: 8px;
     background: #fff;
     color: #333;
   }
   .btn-copy {
-    padding: 0.5rem 0.9rem;
-    border-radius: 6px;
-    border: 1.5px solid #e0e0e0;
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    border: 1.5px solid #e2e0dd;
     background: #fff;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s;
+    transition: all 0.2s;
     white-space: nowrap;
   }
   .btn-copy:hover { border-color: #999; }
+  .btn-copy.copied {
+    background: #1a1a2e;
+    color: white;
+    border-color: #1a1a2e;
+  }
   .btn-open {
     display: block;
     width: 100%;
