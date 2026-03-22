@@ -43,13 +43,13 @@ describe("prepareView", () => {
     expect(["day", "days"]).toContain(view.dayWord);
   });
 
-  it("sorts timeline chronologically (oldest first)", () => {
+  it("sorts timeline newest first", () => {
     const view = prepareView(config, "en");
     const datedEntries = view.timeline.filter(e => e.date);
     for (let i = 1; i < datedEntries.length; i++) {
       const prev = new Date(datedEntries[i - 1].date!).getTime();
       const curr = new Date(datedEntries[i].date!).getTime();
-      expect(curr).toBeGreaterThanOrEqual(prev);
+      expect(prev).toBeGreaterThanOrEqual(curr);
     }
   });
 

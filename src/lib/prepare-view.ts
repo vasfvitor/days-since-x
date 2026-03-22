@@ -45,7 +45,7 @@ export function prepareView(config: DaySinceConfig, lang: Lang): DaySinceView {
 
   const timeline: ViewEntry[] = [...config.entries]
     .sort((a, b) => {
-      if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (a.date && b.date) return new Date(b.date).getTime() - new Date(a.date).getTime();
       if (a.date) return -1;
       if (b.date) return 1;
       return 0;
