@@ -1,18 +1,14 @@
 {
-  "title": "SaaS de finanças",
+  "title": "SaaS de finanças em 2026",
   "bg": "#f5f0ff",
   "accent": "#8b3ec7",
   "entries": [
-    { "name": "Mobills", "url": "https://mobills.com.br", "date": "2013-01-01" },
-    { "name": "Organizze", "url": "https://organizze.com.br", "date": "2012-06-01" },
-    { "name": "Guiabolso", "url": "https://guiabolso.com.br", "date": "2014-03-01" },
-    { "name": "Compass", "url": "https://compassapp.com.br", "date": "2025-01-01" },
-    { "name": "FindDash", "url": "https://findash.net", "date": "2025-01-01" },
-    { "name": "Kascalho", "url": "https://kascalho.vercel.app", "date": "2025-01-01" },
-    { "name": "Prevy", "url": "https://prevy.com.br", "date": "2025-02-01" },
-    { "name": "LoveFin", "url": "https://lovefin.com.br", "date": "2025-03-01" },
-    { "name": "Lunn", "url": "https://play.google.com/store/apps/details?id=com.lunn.app", "date": "2025-02-01" },
-    { "name": "Securo", "url": "https://github.com/securo-finance/securo", "date": "2025-03-11" },
-    { "name": "Nossos Boletos", "url": "https://github.com/replicant026/nossos-boletos", "date": "2025-03-12" }
+    { "name": "Prevy", "url": "https://www.reddit.com/r/investimentos/comments/1q38045/app_de_controle_financeiro/", "date": "2026-02-17" },
+    { "name": "LoveFin", "url": "https://www.reddit.com/r/MicroSaaSBR/comments/1rvhrm1/show_me_the_saas_mais_um_saas_de_finan%C3%A7as_sim_mas/", "date": "2026-03-16" },
+    { "name": "Lunn", "url": "https://www.reddit.com/r/investimentos/comments/1r020wk/lan%C3%A7amento_lunn_o_app_de_gest%C3%A3o_de_carteira_que/", "date": "2026-02-09" },
+    { "name": "Securo", "url": "https://github.com/securo-finance/securo", "date": "2026-03-11" },
+    { "name": "Nossos Boletos", "url": "https://github.com/replicant026/nossos-boletos", "date": "2026-03-12" },
+    { "name": "Meta do Milhão", "url": "https://www.reddit.com/r/MicroSaaSBR/comments/1s0l4nm/site_gratuito_pra_se_organizar_financeiramente/", "date": "2026-03-22" },
+    { "name": "Vizy", "url": "https://www.reddit.com/r/MicroSaaSBR/comments/1s4ntxa/todo_mundo_fala_que_j%C3%A1_existem_mil_saas_de/", "date": "2026-03-26" }
   ]
 }
