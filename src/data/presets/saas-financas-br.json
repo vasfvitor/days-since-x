@@ -1,0 +1,18 @@
+{
+  "title": "SaaS de finanças",
+  "bg": "#f5f0ff",
+  "accent": "#8b3ec7",
+  "entries": [
+    { "name": "Mobills", "url": "https://mobills.com.br", "date": "2013-01-01" },
+    { "name": "Organizze", "url": "https://organizze.com.br", "date": "2012-06-01" },
+    { "name": "Guiabolso", "url": "https://guiabolso.com.br", "date": "2014-03-01" },
+    { "name": "Compass", "url": "https://compassapp.com.br", "date": "2025-01-01" },
+    { "name": "FindDash", "url": "https://findash.net", "date": "2025-01-01" },
+    { "name": "Kascalho", "url": "https://kascalho.vercel.app", "date": "2025-01-01" },
+    { "name": "Prevy", "url": "https://prevy.com.br", "date": "2025-02-01" },
+    { "name": "LoveFin", "url": "https://lovefin.com.br", "date": "2025-03-01" },
+    { "name": "Lunn", "url": "https://play.google.com/store/apps/details?id=com.lunn.app", "date": "2025-02-01" },
+    { "name": "Securo", "url": "https://github.com/securo-finance/securo", "date": "2025-03-11" },
+    { "name": "Nossos Boletos", "url": "https://github.com/replicant026/nossos-boletos", "date": "2025-03-12" }
+  ]
+}
