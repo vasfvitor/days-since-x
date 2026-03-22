@@ -17,6 +17,34 @@ import "../styles/viewer.css";
     import { REPO_URL } from "../lib/defaults";
     import type { DaySinceConfig } from "../lib/types";
 
+    function el(tag: string, cls?: string, attrs?: Record<string, string>): HTMLElement {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (attrs) for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    }
+
+    function txt(parent: HTMLElement, text: string) {
+      parent.appendChild(document.createTextNode(text));
+    }
+
+    function fade(e: HTMLElement, delay?: string): HTMLElement {
+      e.classList.add("ds-fade");
+      if (delay) e.style.animationDelay = delay;
+      return e;
+    }
+
+    function nameEl(name: string, url: string | undefined): HTMLElement {
+      if (url) {
+        const a = el("a", undefined, { href: url, target: "_blank", rel: "noopener" });
+        a.textContent = name;
+        return a;
+      }
+      const strong = el("strong");
+      strong.textContent = name;
+      return strong;
+    }
+
     function buildPermalinkUrl(config: DaySinceConfig, hash: string): string {
       const url = `${window.location.origin}/d#${hash}`;
       const issueTitle = `[counter] ${config.title}`;
@@ -42,99 +70,187 @@ import "../styles/viewer.css";
       return `${REPO_URL}/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
     }
 
-    function escHtml(s: string) {
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
-    function countUp(el: HTMLElement, target: number) {
-      if (target <= 0) { el.textContent = String(target); return; }
+    function countUp(target: number, element: HTMLElement) {
+      if (target <= 0) { element.textContent = String(target); return; }
       const duration = Math.min(1200, 300 + target * 3);
       const start = performance.now();
       function tick(now: number) {
         const elapsed = now - start;
         const progress = Math.min(elapsed / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = String(Math.round(eased * target));
+        element.textContent = String(Math.round(eased * target));
         if (progress < 1) requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);
     }
 
+    function showLoading(msg: string, linkText: string) {
+      const loading = document.getElementById("loading")!;
+      loading.textContent = "";
+      const span = el("span");
+      span.textContent = msg;
+      loading.appendChild(span);
+      const a = el("a", "loading-link", { href: "/" });
+      a.textContent = linkText;
+      loading.appendChild(a);
+    }
+
     function render(config: DaySinceConfig, lang: Lang, hash: string) {
       const { bg, accent, latest, days, record, isRecord, timeline } = prepareView(config, lang);
-
       const mount = document.getElementById("mount")!;
-      mount.innerHTML = `
-        <div class="ds-root" style="--bg: ${bg}; --accent: ${accent};">
-          <div class="ds-lang-corner">
-            <div class="lang-switch">
-              <button data-lang="pt-BR">PT</button>
-              <button data-lang="en">EN</button>
-            </div>
-          </div>
-          <main class="ds-main">
-            ${latest ? `
-              <p class="ds-label ds-fade" data-i18n="itHasBeen">${t(lang, "itHasBeen")}</p>
-              <p class="ds-number ds-fade" style="animation-delay: 0.1s">
-                <span class="ds-count" data-date="${latest.date}" data-target="${days}">0</span>
-              </p>
-              <p class="ds-unit ds-fade" style="animation-delay: 0.15s">
-                <span data-i18n="${days === 1 ? "day" : "days"}">${days === 1 ? t(lang, "day") : t(lang, "days")}</span>
-              </p>
-              <p class="ds-since ds-fade" style="animation-delay: 0.2s">
-                <span data-i18n="sinceTheLast">${t(lang, "sinceTheLast")}</span>
-                ${escHtml(config.title)}.
-              </p>
-              <p class="ds-latest ds-fade" style="animation-delay: 0.25s">
-                <span data-i18n="mostRecent">${t(lang, "mostRecent")}</span>:
-                ${latest.url
-                  ? `<a href="${escHtml(latest.url)}" target="_blank" rel="noopener">${escHtml(latest.name)}</a>`
-                  : `<strong>${escHtml(latest.name)}</strong>`}
-                ${latest.date ? ` &mdash; <time class="ds-latest-date" data-date="${latest.date}">${latest.dateFormatted}</time>` : ""}
-              </p>
-              ${record > 0 && timeline.length >= 2 ? `
-              <p class="ds-record ds-fade ${isRecord ? "ds-record-new" : ""}" style="animation-delay: 0.3s">
-                ${isRecord
-                  ? `<span data-i18n="newRecord">${t(lang, "newRecord")}</span>`
-                  : `<span data-i18n="record">${t(lang, "record")}</span> ${record} ${record === 1 ? t(lang, "day") : t(lang, "days")}`}
-              </p>` : ""}
-            ` : `<p class="ds-since ds-fade">${escHtml(config.title)}</p>`}
-          </main>
-          ${timeline.length > 0 ? `
-          <section class="ds-timeline ds-fade" style="animation-delay: 0.35s">
-            <h2 data-i18n="timeline">${t(lang, "timeline")}</h2>
-            <ul>
-              ${timeline.map((e, i) => `
-                <li class="ds-fade" style="animation-delay: ${0.4 + i * 0.04}s">
-                  <span class="dot"></span>
-                  <div>
-                    ${e.url
-                      ? `<a href="${escHtml(e.url)}" target="_blank" rel="noopener">${escHtml(e.name)}</a>`
-                      : `<strong>${escHtml(e.name)}</strong>`}
-                    ${e.date ? `<time data-date="${e.date}">${e.dateFormatted}</time>` : ""}
-                  </div>
-                </li>
-              `).join("")}
-            </ul>
-          </section>` : ""}
-          <footer class="ds-fade" style="animation-delay: 0.5s">
-            <a href="/" data-i18n="createYourOwn">${t(lang, "createYourOwn")}</a>
-            <span class="sep">&middot;</span>
-            <a href="/?edit=${encodeURIComponent(hash)}" data-i18n="edit">${t(lang, "edit")}</a>
-            <span class="sep">&middot;</span>
-            <a href="${buildPermalinkUrl(config, hash)}" target="_blank" rel="noopener" data-i18n="createPermalink">${t(lang, "createPermalink")}</a>
-          </footer>
-        </div>
-      `;
+      mount.textContent = "";
 
+      const root = el("div", "ds-root");
+      root.style.setProperty("--bg", bg);
+      root.style.setProperty("--accent", accent);
+
+      // Lang switch
+      const langCorner = el("div", "ds-lang-corner");
+      const langSwitch = el("div", "lang-switch");
+      const btnPt = el("button", undefined, { "data-lang": "pt-BR" });
+      btnPt.textContent = "PT";
+      const btnEn = el("button", undefined, { "data-lang": "en" });
+      btnEn.textContent = "EN";
+      langSwitch.append(btnPt, btnEn);
+      langCorner.appendChild(langSwitch);
+      root.appendChild(langCorner);
+
+      // Main
+      const main = el("main", "ds-main");
+
+      if (latest) {
+        // Label
+        const label = fade(el("p", "ds-label", { "data-i18n": "itHasBeen" }));
+        label.textContent = t(lang, "itHasBeen");
+        main.appendChild(label);
+
+        // Number
+        const numP = fade(el("p", "ds-number"), "0.1s");
+        const countSpan = el("span", "ds-count");
+        countSpan.dataset.date = latest.date ?? "";
+        countSpan.dataset.target = String(days);
+        countSpan.textContent = "0";
+        numP.appendChild(countSpan);
+        main.appendChild(numP);
+
+        // Unit
+        const unitP = fade(el("p", "ds-unit"), "0.15s");
+        const dayKey = days === 1 ? "day" : "days";
+        const daySpan = el("span", "ds-days", { "data-i18n": dayKey });
+        daySpan.textContent = t(lang, dayKey);
+        unitP.appendChild(daySpan);
+        main.appendChild(unitP);
+
+        // Since
+        const sinceP = fade(el("p", "ds-since"), "0.2s");
+        const sinceSpan = el("span", undefined, { "data-i18n": "sinceTheLast" });
+        sinceSpan.textContent = t(lang, "sinceTheLast");
+        sinceP.appendChild(sinceSpan);
+        txt(sinceP, ` ${config.title}.`);
+        main.appendChild(sinceP);
+
+        // Latest
+        const latestP = fade(el("p", "ds-latest"), "0.25s");
+        const recSpan = el("span", undefined, { "data-i18n": "mostRecent" });
+        recSpan.textContent = t(lang, "mostRecent");
+        latestP.appendChild(recSpan);
+        txt(latestP, ": ");
+        latestP.appendChild(nameEl(latest.name, latest.url));
+        if (latest.date) {
+          txt(latestP, " \u2014 ");
+          const time = el("time", "ds-latest-date", { "data-date": latest.date });
+          time.textContent = latest.dateFormatted ?? "";
+          latestP.appendChild(time);
+        }
+        main.appendChild(latestP);
+
+        // Record
+        if (record > 0 && timeline.length >= 2) {
+          const recP = fade(el("p", `ds-record${isRecord ? " ds-record-new" : ""}`), "0.3s");
+          if (isRecord) {
+            const s = el("span", undefined, { "data-i18n": "newRecord" });
+            s.textContent = t(lang, "newRecord");
+            recP.appendChild(s);
+          } else {
+            const s = el("span", undefined, { "data-i18n": "record" });
+            s.textContent = t(lang, "record");
+            recP.appendChild(s);
+            txt(recP, ` ${record} ${record === 1 ? t(lang, "day") : t(lang, "days")}`);
+          }
+          main.appendChild(recP);
+        }
+      } else {
+        const sinceP = fade(el("p", "ds-since"));
+        sinceP.textContent = config.title;
+        main.appendChild(sinceP);
+      }
+
+      root.appendChild(main);
+
+      // Timeline
+      if (timeline.length > 0) {
+        const section = fade(el("section", "ds-timeline"), "0.35s");
+        const h2 = el("h2", undefined, { "data-i18n": "timeline" });
+        h2.textContent = t(lang, "timeline");
+        section.appendChild(h2);
+
+        const ul = el("ul");
+        timeline.forEach((e, i) => {
+          const li = fade(el("li"), `${0.4 + i * 0.04}s`);
+          li.appendChild(el("span", "dot"));
+          const div = el("div");
+          div.appendChild(nameEl(e.name, e.url));
+          if (e.date) {
+            const time = el("time", undefined, { "data-date": e.date });
+            time.textContent = e.dateFormatted ?? "";
+            div.appendChild(time);
+          }
+          li.appendChild(div);
+          ul.appendChild(li);
+        });
+        section.appendChild(ul);
+        root.appendChild(section);
+      }
+
+      // Footer
+      const footer = fade(el("footer"), "0.5s");
+      const createLink = el("a", undefined, { href: "/", "data-i18n": "createYourOwn" });
+      createLink.textContent = t(lang, "createYourOwn");
+      footer.appendChild(createLink);
+
+      const sep1 = el("span", "sep");
+      sep1.textContent = "\u00B7";
+      footer.appendChild(sep1);
+
+      const editLink = el("a", undefined, { href: `/?edit=${encodeURIComponent(hash)}`, "data-i18n": "edit" });
+      editLink.textContent = t(lang, "edit");
+      footer.appendChild(editLink);
+
+      const sep2 = el("span", "sep");
+      sep2.textContent = "\u00B7";
+      footer.appendChild(sep2);
+
+      const permaLink = el("a", undefined, {
+        href: buildPermalinkUrl(config, hash),
+        target: "_blank",
+        rel: "noopener",
+        "data-i18n": "createPermalink",
+      });
+      permaLink.textContent = t(lang, "createPermalink");
+      footer.appendChild(permaLink);
+
+      root.appendChild(footer);
+      mount.appendChild(root);
+
+      // Count-up animation
       const countEl = mount.querySelector<HTMLSpanElement>(".ds-count");
       if (countEl?.dataset.target) {
-        countUp(countEl, parseInt(countEl.dataset.target, 10));
+        countUp(parseInt(countEl.dataset.target, 10), countEl);
       }
 
       document.title = latest
-        ? `${days} ${t(lang, days === 1 ? "day" : "days")} - ${config.title}`
-        : config.title;
+        ? `${days} ${t(lang, days === 1 ? "day" : "days")} - ${config.title} | Days Since`
+        : `${config.title} | Days Since`;
     }
 
     let currentConfig: DaySinceConfig | null = null;
@@ -142,23 +258,22 @@ import "../styles/viewer.css";
 
     function init() {
       const hash = window.location.hash.slice(1);
-      const loading = document.getElementById("loading")!;
       const lang = getLang();
 
       if (!hash) {
-        loading.innerHTML = `<span>${t(lang, "noData")}</span><a href="/" class="loading-link">${t(lang, "goToBuilder")}</a>`;
+        showLoading(t(lang, "noData"), t(lang, "goToBuilder"));
         return;
       }
 
       const config = decode(hash);
       if (!config) {
-        loading.innerHTML = `<span>${t(lang, "couldNotDecode")}</span><a href="/" class="loading-link">${t(lang, "goToBuilder")}</a>`;
+        showLoading(t(lang, "couldNotDecode"), t(lang, "goToBuilder"));
         return;
       }
 
       currentConfig = config;
       currentHash = hash;
-      loading.style.display = "none";
+      document.getElementById("loading")!.style.display = "none";
       render(config, lang, hash);
     }
 

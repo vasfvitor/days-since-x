@@ -1,5 +1,6 @@
 import * as LZString from "lz-string";
 import type { DaySinceConfig } from "./types";
+import { sanitizeConfig } from "./sanitize";
 
 export function encode(config: DaySinceConfig): string {
   return LZString.compressToEncodedURIComponent(JSON.stringify(config));
@@ -8,8 +9,8 @@ export function encode(config: DaySinceConfig): string {
 export function decode(hash: string): DaySinceConfig | null {
   try {
     const json = LZString.decompressFromEncodedURIComponent(hash);
-    if (!json) return null;
-    return JSON.parse(json) as DaySinceConfig;
+    if (!json || json.length > 50_000) return null;
+    return sanitizeConfig(JSON.parse(json));
   } catch {
     return null;
   }
@@ -25,7 +26,11 @@ export function daysSince(dateStr: string): number {
 export function resolveUrl(input: string): string | undefined {
   const v = input.trim();
   if (!v) return undefined;
-  if (v.startsWith("http://") || v.startsWith("https://")) return v;
-  if (v.includes("/")) return `https://github.com/${v}`;
+  if (v.startsWith("https://") || v.startsWith("http://")) {
+    try { new URL(v); return v; } catch { return undefined; }
+  }
+  if (/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(v)) {
+    return `https://github.com/${v}`;
+  }
   return undefined;
 }

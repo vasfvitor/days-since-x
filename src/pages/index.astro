@@ -236,11 +236,20 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     const row = document.createElement("div");
     row.className = "entry-row";
     row.innerHTML = `
-      <input type="text" class="e-name" data-i18n-placeholder="namePlaceholder" placeholder="${t(lang, "namePlaceholder")}" value="${name}" required />
-      <input type="text" class="e-url" data-i18n-placeholder="urlPlaceholder" placeholder="${t(lang, "urlPlaceholder")}" value="${url}" />
-      <input type="date" class="e-date" value="${date}" />
+      <input type="text" class="e-name" data-i18n-placeholder="namePlaceholder" required />
+      <input type="text" class="e-url" data-i18n-placeholder="urlPlaceholder" />
+      <input type="date" class="e-date" />
       <button type="button" class="btn-remove" title="Remove">&times;</button>
     `;
+    // Set values via DOM properties (not innerHTML) to prevent XSS
+    const nameInput = row.querySelector(".e-name") as HTMLInputElement;
+    const urlInput = row.querySelector(".e-url") as HTMLInputElement;
+    const dateInput = row.querySelector(".e-date") as HTMLInputElement;
+    nameInput.value = name;
+    nameInput.placeholder = t(lang, "namePlaceholder");
+    urlInput.value = url;
+    urlInput.placeholder = t(lang, "urlPlaceholder");
+    dateInput.value = date;
     row.querySelectorAll("input").forEach((input) => {
       input.addEventListener("input", syncToTextarea);
     });
