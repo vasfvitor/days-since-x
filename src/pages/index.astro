@@ -1,6 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import { DEFAULTS } from "../lib/defaults";
+import { THEMES } from "../lib/themes";
 
 const presetFiles = import.meta.glob("../data/presets/*.json", { eager: true });
 const presets = Object.entries(presetFiles).map(([path, mod]) => {
@@ -40,21 +41,46 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
         <input type="text" id="f-title" data-i18n-placeholder="titlePlaceholder" placeholder="novo servidor de Minecraft feito em Rust" required />
       </label>
 
-      <div class="color-row">
-        <label>
-          <span data-i18n="background">Fundo</span>
-          <div class="color-input">
-            <input type="color" id="f-bg" value={DEFAULTS.bg} />
-            <span class="color-hex" id="f-bg-hex">{DEFAULTS.bg}</span>
-          </div>
-        </label>
-        <label>
-          <span data-i18n="accent">Destaque</span>
-          <div class="color-input">
-            <input type="color" id="f-accent" value={DEFAULTS.accent} />
-            <span class="color-hex" id="f-accent-hex">{DEFAULTS.accent}</span>
-          </div>
-        </label>
+      <div class="theme-section">
+        <span class="theme-label" data-i18n="theme">Tema</span>
+        <div class="theme-grid">
+          {THEMES.map((t, i) => (
+            <button
+              type="button"
+              class={`theme-btn ${i === 0 ? "active" : ""}`}
+              data-bg={t.bg}
+              data-accent={t.accent}
+              title={t.name}
+            >
+              <span class="theme-swatch" style={`background: ${t.bg}; border-color: ${t.accent};`}>
+                <span class="theme-accent" style={`background: ${t.accent};`}></span>
+              </span>
+              <span class="theme-name">{t.name}</span>
+            </button>
+          ))}
+          <button type="button" class="theme-btn theme-custom" id="theme-custom-btn" title="Custom">
+            <span class="theme-swatch theme-swatch-custom">
+              <span class="theme-accent-custom">?</span>
+            </span>
+            <span class="theme-name" data-i18n="custom">Personalizado</span>
+          </button>
+        </div>
+        <div id="custom-colors" class="color-row" hidden>
+          <label>
+            <span data-i18n="background">Fundo</span>
+            <div class="color-input">
+              <input type="color" id="f-bg" value={DEFAULTS.bg} />
+              <span class="color-hex" id="f-bg-hex">{DEFAULTS.bg}</span>
+            </div>
+          </label>
+          <label>
+            <span data-i18n="accent">Destaque</span>
+            <div class="color-input">
+              <input type="color" id="f-accent" value={DEFAULTS.accent} />
+              <span class="color-hex" id="f-accent-hex">{DEFAULTS.accent}</span>
+            </div>
+          </label>
+        </div>
       </div>
 
       <fieldset id="entries-fieldset">
@@ -107,8 +133,45 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
   const accentInput = document.getElementById("f-accent") as HTMLInputElement;
   const bgHex = document.getElementById("f-bg-hex")!;
   const accentHex = document.getElementById("f-accent-hex")!;
-  bgInput.addEventListener("input", () => (bgHex.textContent = bgInput.value));
-  accentInput.addEventListener("input", () => (accentHex.textContent = accentInput.value));
+  bgInput.addEventListener("input", () => {
+    bgHex.textContent = bgInput.value;
+    clearActiveTheme();
+  });
+  accentInput.addEventListener("input", () => {
+    accentHex.textContent = accentInput.value;
+    clearActiveTheme();
+  });
+
+  // --- Theme picker ---
+  const customColorsDiv = document.getElementById("custom-colors")!;
+  const themeBtns = document.querySelectorAll<HTMLButtonElement>(".theme-btn:not(.theme-custom)");
+  const customBtn = document.getElementById("theme-custom-btn")!;
+
+  function clearActiveTheme() {
+    themeBtns.forEach(b => b.classList.remove("active"));
+    customBtn.classList.add("active");
+    customColorsDiv.hidden = false;
+  }
+
+  themeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      themeBtns.forEach(b => b.classList.remove("active"));
+      customBtn.classList.remove("active");
+      btn.classList.add("active");
+      customColorsDiv.hidden = true;
+      const bg = btn.dataset.bg!;
+      const accent = btn.dataset.accent!;
+      bgInput.value = bg;
+      accentInput.value = accent;
+      bgHex.textContent = bg;
+      accentHex.textContent = accent;
+    });
+  });
+
+  customBtn.addEventListener("click", () => {
+    clearActiveTheme();
+    bgInput.focus();
+  });
 
   document.getElementById("toggle-bulk")!.addEventListener("click", () => {
     const isHidden = bulkWrap.hidden;
@@ -363,9 +426,81 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     border-color: #4444ff;
     box-shadow: 0 0 0 3px rgba(68,68,255,0.08);
   }
+  .theme-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .theme-label {
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+  }
+  .theme-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .theme-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 56px;
+    font-family: inherit;
+  }
+  .theme-btn:hover {
+    background: rgba(0,0,0,0.03);
+  }
+  .theme-btn.active {
+    border-color: #1a1a2e;
+  }
+  .theme-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1.5px solid #e2e0dd;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 3px;
+    transition: transform 0.2s;
+  }
+  .theme-btn:hover .theme-swatch {
+    transform: scale(1.08);
+  }
+  .theme-accent {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+  }
+  .theme-swatch-custom {
+    background: conic-gradient(from 0deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6, #ff6b6b);
+    border-color: #ddd;
+  }
+  .theme-accent-custom {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .theme-name {
+    font-size: 0.62rem;
+    opacity: 0.45;
+    font-weight: 500;
+    white-space: nowrap;
+  }
   .color-row {
     display: flex;
     gap: 1rem;
+    margin-top: 0.25rem;
+    animation: slideDown 0.2s ease;
   }
   .color-row label { flex: 1; }
   .color-input {

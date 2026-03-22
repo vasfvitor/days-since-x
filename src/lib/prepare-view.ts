@@ -18,6 +18,8 @@ export interface DaySinceView {
   latest: ViewEntry | null;
   days: number;
   dayWord: "day" | "days";
+  record: number;
+  isRecord: boolean;
   timeline: ViewEntry[];
 }
 
@@ -55,5 +57,21 @@ export function prepareView(config: DaySinceConfig, lang: Lang): DaySinceView {
       dateFormatted: e.date ? formatDateLocale(e.date, lang) : undefined,
     }));
 
-  return { title: config.title, bg, accent, latest, days, dayWord: days === 1 ? "day" : "days", timeline };
+  // Compute record: largest gap between consecutive dated entries
+  let record = 0;
+  if (sorted.length >= 2) {
+    // sorted is newest-first, iterate to find max gap between consecutive dates
+    const chronological = [...sorted].reverse(); // oldest-first
+    for (let i = 1; i < chronological.length; i++) {
+      const prev = new Date(chronological[i - 1].date!).getTime();
+      const curr = new Date(chronological[i].date!).getTime();
+      const gap = Math.floor((curr - prev) / 86_400_000);
+      if (gap > record) record = gap;
+    }
+  }
+  // Current streak (days since latest) also counts
+  const isRecord = days > 0 && days >= record;
+  if (days > record) record = days;
+
+  return { title: config.title, bg, accent, latest, days, dayWord: days === 1 ? "day" : "days", record, isRecord, timeline };
 }

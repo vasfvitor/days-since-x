@@ -32,6 +32,10 @@ export const translations = {
     urlPlaceholder: "URL ou user/repo",
     datePlaceholder: "Data (opcional)",
     importHelp: "Uma entrada por linha: nome, url, data",
+    theme: "Tema",
+    custom: "Personalizado",
+    record: "Nosso recorde é de",
+    newRecord: "Novo recorde!",
   },
   en: {
     itHasBeen: "It has been",
@@ -64,6 +68,10 @@ export const translations = {
     urlPlaceholder: "URL or user/repo",
     datePlaceholder: "Date (optional)",
     importHelp: "One entry per line: name, url, date",
+    theme: "Theme",
+    custom: "Custom",
+    record: "Our record is",
+    newRecord: "New record!",
   },
 } as const;
 
