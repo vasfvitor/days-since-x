@@ -1,3 +1,5 @@
+import { DEFAULTS } from "./defaults";
+
 export const translations = {
   "pt-BR": {
     itHasBeen: "Faz",
@@ -73,8 +75,8 @@ export function t(lang: Lang, key: TKey): string {
 }
 
 export function getLang(): Lang {
-  if (typeof window === "undefined") return "pt-BR";
-  return (localStorage.getItem("ds-lang") as Lang) || "pt-BR";
+  if (typeof window === "undefined") return DEFAULTS.lang;
+  return (localStorage.getItem("ds-lang") as Lang) || DEFAULTS.lang;
 }
 
 export function setLang(lang: Lang) {

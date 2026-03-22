@@ -7,8 +7,9 @@ import Base from "../layouts/Base.astro";
   <div id="mount"></div>
 
   <script>
-    import { decode, daysSince } from "../lib/codec";
-    import { getLang, formatDateLocale, t, type Lang } from "../lib/i18n";
+    import { decode } from "../lib/codec";
+    import { getLang, t, type Lang } from "../lib/i18n";
+    import { prepareView } from "../lib/prepare-view";
     import type { DaySinceConfig } from "../lib/types";
 
     function escHtml(s: string) {
@@ -16,22 +17,7 @@ import Base from "../layouts/Base.astro";
     }
 
     function render(config: DaySinceConfig, lang: Lang, hash: string) {
-      const bg = config.bg ?? "#f0f8ff";
-      const accent = config.accent ?? "#4444ff";
-
-      const withDates = config.entries.filter((e) => e.date);
-      const sorted = [...withDates].sort(
-        (a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime()
-      );
-      const latest = sorted[0];
-      const days = latest ? daysSince(latest.date!) : 0;
-
-      const timeline = [...config.entries].sort((a, b) => {
-        if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (a.date) return -1;
-        if (b.date) return 1;
-        return 0;
-      });
+      const { bg, accent, latest, days, timeline } = prepareView(config, lang);
 
       const mount = document.getElementById("mount")!;
       mount.innerHTML = `
@@ -54,7 +40,7 @@ import Base from "../layouts/Base.astro";
                 ${latest.url
                   ? `<a href="${escHtml(latest.url)}" target="_blank" rel="noopener">${escHtml(latest.name)}</a>`
                   : `<strong>${escHtml(latest.name)}</strong>`}
-                ${latest.date ? ` &mdash; <time class="ds-latest-date" data-date="${latest.date}">${formatDateLocale(latest.date, lang)}</time>` : ""}
+                ${latest.date ? ` &mdash; <time class="ds-latest-date" data-date="${latest.date}">${latest.dateFormatted}</time>` : ""}
               </p>
             ` : `<p class="ds-since">${escHtml(config.title)}</p>`}
           </main>
@@ -69,7 +55,7 @@ import Base from "../layouts/Base.astro";
                     ${e.url
                       ? `<a href="${escHtml(e.url)}" target="_blank" rel="noopener">${escHtml(e.name)}</a>`
                       : `<strong>${escHtml(e.name)}</strong>`}
-                    ${e.date ? `<time data-date="${e.date}">${formatDateLocale(e.date, lang)}</time>` : ""}
+                    ${e.date ? `<time data-date="${e.date}">${e.dateFormatted}</time>` : ""}
                   </div>
                 </li>
               `).join("")}

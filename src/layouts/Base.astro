@@ -1,11 +1,13 @@
 ---
+import { DEFAULTS } from "../lib/defaults";
+
 interface Props {
   title?: string;
 }
 const { title = "Days Since" } = Astro.props;
 ---
 <!doctype html>
-<html lang="pt-BR">
+<html lang={DEFAULTS.lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import { DEFAULTS } from "../lib/defaults";
 
 const presetFiles = import.meta.glob("../data/presets/*.json", { eager: true });
 const presets = Object.entries(presetFiles).map(([path, mod]) => {
@@ -35,15 +36,15 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
         <label>
           <span data-i18n="background">Fundo</span>
           <div class="color-input">
-            <input type="color" id="f-bg" value="#f0f8ff" />
-            <span class="color-hex" id="f-bg-hex">#f0f8ff</span>
+            <input type="color" id="f-bg" value={DEFAULTS.bg} />
+            <span class="color-hex" id="f-bg-hex">{DEFAULTS.bg}</span>
           </div>
         </label>
         <label>
           <span data-i18n="accent">Destaque</span>
           <div class="color-input">
-            <input type="color" id="f-accent" value="#4444ff" />
-            <span class="color-hex" id="f-accent-hex">#4444ff</span>
+            <input type="color" id="f-accent" value={DEFAULTS.accent} />
+            <span class="color-hex" id="f-accent-hex">{DEFAULTS.accent}</span>
           </div>
         </label>
       </div>
