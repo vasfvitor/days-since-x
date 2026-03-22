@@ -1,16 +1,20 @@
 ---
 import type { DaySinceConfig } from "../lib/types";
-import { DEFAULTS } from "../lib/defaults";
+import { DEFAULTS, REPO_URL } from "../lib/defaults";
 import { prepareView } from "../lib/prepare-view";
 import "../styles/viewer.css";
 
 interface Props {
   config: DaySinceConfig;
   hash?: string;
+  presetSlug?: string;
 }
 
-const { config, hash } = Astro.props;
+const { config, hash, presetSlug } = Astro.props;
 const { bg, accent, latest, days, record, isRecord, timeline } = prepareView(config, DEFAULTS.lang);
+const editUrl = presetSlug
+  ? `${REPO_URL}/edit/main/src/data/presets/${presetSlug}.json`
+  : hash ? `/?edit=${hash}` : undefined;
 ---
 
 <div class="ds-root" style={`--bg: ${bg}; --accent: ${accent};`}>
@@ -79,10 +83,13 @@ const { bg, accent, latest, days, record, isRecord, timeline } = prepareView(con
 
   <footer class="ds-fade" style="animation-delay: 0.5s">
     <a href="/" data-i18n="createYourOwn">Crie o seu</a>
-    {hash && (
+    {editUrl && (
       <Fragment>
         <span class="sep">&middot;</span>
-        <a href={`/?edit=${hash}`} data-i18n="edit">Editar</a>
+        {presetSlug
+          ? <a href={editUrl} target="_blank" rel="noopener" data-i18n="editOnGithub">Editar no GitHub</a>
+          : <a href={editUrl} data-i18n="edit">Editar</a>
+        }
       </Fragment>
     )}
   </footer>

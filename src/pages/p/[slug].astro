@@ -13,14 +13,14 @@ export async function getStaticPaths() {
     const slug = path.split("/").pop()!.replace(".json", "");
     return {
       params: { slug },
-      props: { config: (mod as any).default as DaySinceConfig },
+      props: { config: (mod as any).default as DaySinceConfig, slug },
     };
   });
 }
 
-const { config } = Astro.props;
+const { config, slug } = Astro.props;
 ---
 
 <Base title={`Days since the last ${config.title}`}>
-  <DaySinceViewer config={config} />
+  <DaySinceViewer config={config} presetSlug={slug} />
 </Base>

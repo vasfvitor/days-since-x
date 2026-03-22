@@ -36,6 +36,8 @@ export const translations = {
     custom: "Personalizado",
     record: "Nosso recorde é de",
     newRecord: "Novo recorde!",
+    createPermalink: "Criar permalink",
+    editOnGithub: "Editar no GitHub",
   },
   en: {
     itHasBeen: "It has been",
@@ -72,6 +74,8 @@ export const translations = {
     custom: "Custom",
     record: "Our record is",
     newRecord: "New record!",
+    createPermalink: "Create permalink",
+    editOnGithub: "Edit on GitHub",
   },
 } as const;
 

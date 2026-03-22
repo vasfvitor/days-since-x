@@ -110,7 +110,10 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
         <input type="text" id="result-url" readonly />
         <button id="copy-btn" class="btn-copy" data-i18n="copy">Copiar</button>
       </div>
-      <a id="open-btn" class="btn-primary btn-open" target="_blank" rel="noopener" data-i18n="open">Abrir</a>
+      <div class="result-actions">
+        <a id="open-btn" class="btn-primary btn-open" target="_blank" rel="noopener" data-i18n="open">Abrir</a>
+        <a id="permalink-btn" class="btn-ghost btn-permalink" target="_blank" rel="noopener" data-i18n="createPermalink">Criar permalink</a>
+      </div>
     </div>
 
     <footer class="builder-footer">
@@ -121,6 +124,7 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
 <script>
   import { encode, decode, resolveUrl } from "../lib/codec";
   import { getLang, t } from "../lib/i18n";
+  import { REPO_URL } from "../lib/defaults";
   import type { DaySinceConfig, DaySinceEntry } from "../lib/types";
 
   const list = document.getElementById("entries-list")!;
@@ -312,9 +316,35 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     const resultDiv = document.getElementById("result")!;
     const resultUrl = document.getElementById("result-url") as HTMLInputElement;
     const openBtn = document.getElementById("open-btn") as HTMLAnchorElement;
+    const permalinkBtn = document.getElementById("permalink-btn") as HTMLAnchorElement;
 
     resultUrl.value = url;
     openBtn.href = url;
+
+    // Build GitHub issue URL with the config as JSON body
+    const issueTitle = `[counter] ${config.title}`;
+    const entriesTable = config.entries
+      .map(e => `| ${e.name} | ${e.url ?? ""} | ${e.date ?? ""} |`)
+      .join("\n");
+    const issueBody = [
+      `## ${config.title}`,
+      "",
+      `**Link:** [View counter](${url})`,
+      "",
+      `| Name | URL | Date |`,
+      `|------|-----|------|`,
+      entriesTable,
+      "",
+      `<details><summary>Raw config</summary>`,
+      "",
+      "```json",
+      JSON.stringify(config, null, 2),
+      "```",
+      "</details>",
+    ].join("\n");
+
+    permalinkBtn.href = `${REPO_URL}/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
+
     resultDiv.hidden = false;
     resultDiv.classList.add("result-enter");
     resultUrl.select();
@@ -735,9 +765,23 @@ const presets = Object.entries(presetFiles).map(([path, mod]) => {
     color: white;
     border-color: #1a1a2e;
   }
+  .result-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
   .btn-open {
+    flex: 1;
     display: block;
-    width: 100%;
+  }
+  .btn-permalink {
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0.6;
+    text-decoration: none;
+  }
+  .btn-permalink:hover {
+    opacity: 1;
   }
 
   /* Footer */

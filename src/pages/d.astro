@@ -14,7 +14,33 @@ import "../styles/viewer.css";
     import { decode } from "../lib/codec";
     import { getLang, t, type Lang } from "../lib/i18n";
     import { prepareView } from "../lib/prepare-view";
+    import { REPO_URL } from "../lib/defaults";
     import type { DaySinceConfig } from "../lib/types";
+
+    function buildPermalinkUrl(config: DaySinceConfig, hash: string): string {
+      const url = `${window.location.origin}/d#${hash}`;
+      const issueTitle = `[counter] ${config.title}`;
+      const entriesTable = config.entries
+        .map(e => `| ${e.name} | ${e.url ?? ""} | ${e.date ?? ""} |`)
+        .join("\n");
+      const issueBody = [
+        `## ${config.title}`,
+        "",
+        `**Link:** [View counter](${url})`,
+        "",
+        `| Name | URL | Date |`,
+        `|------|-----|------|`,
+        entriesTable,
+        "",
+        `<details><summary>Raw config</summary>`,
+        "",
+        "```json",
+        JSON.stringify(config, null, 2),
+        "```",
+        "</details>",
+      ].join("\n");
+      return `${REPO_URL}/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
+    }
 
     function escHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -95,6 +121,8 @@ import "../styles/viewer.css";
             <a href="/" data-i18n="createYourOwn">${t(lang, "createYourOwn")}</a>
             <span class="sep">&middot;</span>
             <a href="/?edit=${encodeURIComponent(hash)}" data-i18n="edit">${t(lang, "edit")}</a>
+            <span class="sep">&middot;</span>
+            <a href="${buildPermalinkUrl(config, hash)}" target="_blank" rel="noopener" data-i18n="createPermalink">${t(lang, "createPermalink")}</a>
           </footer>
         </div>
       `;
