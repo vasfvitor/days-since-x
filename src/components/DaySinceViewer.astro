@@ -100,7 +100,8 @@ const editUrl = presetSlug
 </div>
 
 <script>
-  import { getLang, formatDateLocale } from "../lib/i18n";
+  import { getLang, formatDateLocale, t } from "../lib/i18n";
+  import { daysSince, daysBetween } from "../lib/codec";
 
   function updateDates() {
     const lang = getLang();
@@ -129,18 +130,75 @@ const editUrl = presetSlug
     requestAnimationFrame(tick);
   }
 
+  function updateDayUnit(days: number) {
+    const lang = getLang();
+    const daysEl = document.querySelector<HTMLSpanElement>(".ds-days");
+    if (!daysEl) return;
+    const key = days === 1 ? "day" : "days";
+    daysEl.dataset.i18n = key;
+    daysEl.textContent = t(lang, key);
+  }
+
   function updateCounter() {
     const el = document.querySelector<HTMLSpanElement>(".ds-count");
     if (!el?.dataset.date) return;
-    const then = new Date(el.dataset.date + "T00:00:00").getTime();
-    const days = Math.floor((Date.now() - then) / 86_400_000);
+    const days = daysSince(el.dataset.date);
     el.textContent = String(days);
     el.dataset.target = String(days);
+    updateDayUnit(days);
+  }
+
+  function updateRecord() {
+    const recordEl = document.querySelector<HTMLParagraphElement>(".ds-record");
+    if (!recordEl) return;
+    const lang = getLang();
+
+    const times = document.querySelectorAll<HTMLTimeElement>(".ds-timeline time[data-date]");
+    const dates = Array.from(times)
+      .map((el) => el.dataset.date)
+      .filter((d): d is string => !!d);
+    if (dates.length < 2) return;
+
+    const sorted = [...dates].sort();
+    let gapRecord = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      const gap = daysBetween(sorted[i - 1], sorted[i]);
+      if (gap > gapRecord) gapRecord = gap;
+    }
+
+    const days = daysSince(sorted[sorted.length - 1]);
+    const record = Math.max(gapRecord, days);
+    const isRecord = days > 0 && days >= gapRecord;
+
+    recordEl.classList.toggle("ds-record-new", isRecord);
+    recordEl.textContent = "";
+    if (isRecord) {
+      const s = document.createElement("span");
+      s.dataset.i18n = "newRecord";
+      s.textContent = t(lang, "newRecord");
+      recordEl.appendChild(s);
+    } else {
+      const s = document.createElement("span");
+      s.dataset.i18n = "record";
+      s.textContent = t(lang, "record");
+      recordEl.appendChild(s);
+      recordEl.appendChild(
+        document.createTextNode(` ${record} ${t(lang, record === 1 ? "day" : "days")}`),
+      );
+    }
+  }
+
+  function refresh() {
+    updateCounter();
+    updateRecord();
   }
 
   updateDates();
-  updateCounter();
+  refresh();
   countUp();
-  setInterval(updateCounter, 60_000);
-  window.addEventListener("langchange", updateDates);
+  setInterval(refresh, 60_000);
+  window.addEventListener("langchange", () => {
+    updateDates();
+    refresh();
+  });
 </script>

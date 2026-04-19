@@ -16,10 +16,19 @@ export function decode(hash: string): DaySinceConfig | null {
   }
 }
 
+function toUtcDay(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+export function daysBetween(fromDateStr: string, toDateStr: string): number {
+  return Math.floor((toUtcDay(toDateStr) - toUtcDay(fromDateStr)) / 86_400_000);
+}
+
 export function daysSince(dateStr: string): number {
-  const then = new Date(dateStr + "T00:00:00");
   const now = new Date();
-  return Math.floor((now.getTime() - then.getTime()) / 86_400_000);
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((todayUtc - toUtcDay(dateStr)) / 86_400_000);
 }
 
 /** Resolve a URL-like input: full URL kept as-is, "user/repo" → GitHub link */

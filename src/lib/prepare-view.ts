@@ -1,7 +1,7 @@
 import type { DaySinceConfig, DaySinceEntry } from "./types";
 import type { Lang } from "./i18n";
 import { DEFAULTS } from "./defaults";
-import { daysSince } from "./codec";
+import { daysSince, daysBetween } from "./codec";
 import { formatDateLocale } from "./i18n";
 
 export interface ViewEntry {
@@ -72,9 +72,7 @@ export function prepareView(config: DaySinceConfig, lang: Lang): DaySinceView {
     // sorted is newest-first, iterate to find max gap between consecutive dates
     const chronological = [...sorted].reverse(); // oldest-first
     for (let i = 1; i < chronological.length; i++) {
-      const prev = new Date(chronological[i - 1].date!).getTime();
-      const curr = new Date(chronological[i].date!).getTime();
-      const gap = Math.floor((curr - prev) / 86_400_000);
+      const gap = daysBetween(chronological[i - 1].date!, chronological[i].date!);
       if (gap > record) record = gap;
     }
   }
